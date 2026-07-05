@@ -1,0 +1,235 @@
+
+> waybill-manager-v3@0.1.0 dev
+> next dev -p 3001
+
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3001
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 5.2s
+ ○ Compiling / ...
+ ✓ Compiled / in 6.2s (509 modules)
+ HEAD / 200 in 6534ms
+ GET / 200 in 74ms
+ ○ Compiling /api/integration-logs ...
+ ✓ Compiled /api/integration-logs in 1560ms (330 modules)
+ ✓ Compiled (332 modules)
+ GET /api/integration-logs 200 in 2136ms
+ GET /api/integration-logs 200 in 20ms
+ GET /api/tickets 200 in 3538ms
+ GET /api/tickets?page=1&pageSize=20 200 in 3585ms
+ GET /api/tickets 200 in 566ms
+ GET /api/tickets?page=1&pageSize=20 200 in 558ms
+ GET /api/tickets?page=1&pageSize=20 200 in 406ms
+ GET /api/tickets?page=1&pageSize=20 200 in 394ms
+ ○ Compiling /api/scan ...
+ ✓ Compiled /api/scan in 690ms (334 modules)
+ POST /api/scan 424 in 6793ms
+ POST /api/scan 400 in 15ms
+ POST /api/scan 424 in 2095ms
+ GET /api/integration-logs 200 in 68ms
+ POST /api/scan 424 in 2221ms
+ POST /api/scan 500 in 2882ms
+ POST /api/scan 500 in 2978ms
+ ✓ Compiled in 357ms (262 modules)
+ ✓ Compiled in 919ms (592 modules)
+ POST /api/scan 500 in 3575ms
+ ✓ Compiled /api/tickets in 134ms (333 modules)
+ GET /api/tickets?waybillNo=PS2604210008&pageSize=5 200 in 1150ms
+ ✓ Compiled in 1235ms (592 modules)
+ ○ Compiling /api/scan ...
+ ✓ Compiled /api/scan in 582ms (333 modules)
+ POST /api/scan 201 in 4763ms
+ GET / 200 in 214ms
+ ○ Compiling /api/integration-logs ...
+ ✓ Compiled /api/integration-logs in 775ms (335 modules)
+ ✓ Compiled in 1ms (335 modules)
+ GET /api/tickets 200 in 1023ms
+ ✓ Compiled in 0ms (335 modules)
+ ✓ Compiled in 1ms (335 modules)
+ GET /api/integration-logs 200 in 1308ms
+ ✓ Compiled in 1ms (335 modules)
+ GET /api/integration-logs 200 in 407ms
+ GET /api/tickets?page=1&pageSize=20 200 in 1856ms
+ GET /api/tickets 200 in 1054ms
+ GET /api/tickets?page=1&pageSize=20 200 in 342ms
+ GET /api/tickets?page=1&pageSize=20 200 in 334ms
+ GET /api/tickets?page=1&pageSize=20 200 in 397ms
+ POST /api/scan 201 in 3126ms
+ GET /api/tickets 200 in 390ms
+ GET /api/tickets?page=1&pageSize=20 200 in 386ms
+ GET /api/integration-logs 200 in 21ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 1593ms (512 modules)
+ GET / 404 in 1856ms
+ GET /_next/static/css/app/layout.css?v=1783248906934 404 in 76ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 84ms
+ GET /_next/static/chunks/main-app.js?v=1783248906934 404 in 85ms
+ GET /_next/static/css/app/layout.css?v=1783248907108 404 in 27ms
+ ✓ Compiled in 2.8s (509 modules)
+ ✓ Compiled in 228ms (262 modules)
+ ✓ Compiled in 188ms (262 modules)
+ ✓ Compiled in 2.7s (509 modules)
+ ✓ Compiled in 2.9s (509 modules)
+ ✓ Compiled in 3.1s (509 modules)
+ ✓ Compiled in 2.7s (509 modules)
+ ✓ Compiled in 2.8s (509 modules)
+ GET / 200 in 154ms
+ ○ Compiling /api/integration-logs ...
+ ✓ Compiled /api/integration-logs in 721ms (330 modules)
+ ✓ Compiled (332 modules)
+ GET /api/integration-logs 200 in 1367ms
+ GET /api/integration-logs 200 in 19ms
+ GET /api/tickets 200 in 2714ms
+ GET /api/tickets?page=1&pageSize=20 200 in 2721ms
+ GET /api/tickets 200 in 407ms
+ GET /api/tickets?page=1&pageSize=20 200 in 572ms
+ GET /api/tickets?page=1&pageSize=20 200 in 403ms
+ GET /api/tickets?page=1&pageSize=20 200 in 416ms
+ ✓ Compiled in 2.3s (594 modules)
+ GET / 200 in 135ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 1411ms (583 modules)
+ GET /api/tickets 404 in 1586ms
+ GET /_next/static/webpack/9681924050bb54d3.webpack.hot-update.json 404 in 1344ms
+ GET /api/tickets?page=1&pageSize=20 404 in 1586ms
+ GET /api/integration-logs 404 in 1580ms
+ GET /api/integration-logs 200 in 154ms
+ GET / 200 in 164ms
+ GET /api/tickets 200 in 191ms
+ GET /api/tickets?page=1&pageSize=20 200 in 194ms
+ GET /api/integration-logs 200 in 25ms
+ GET /api/integration-logs 200 in 19ms
+ GET /api/tickets?page=1&pageSize=20 200 in 746ms
+ GET /api/tickets 200 in 905ms
+ GET /api/tickets?page=1&pageSize=20 200 in 516ms
+ GET /api/tickets 200 in 514ms
+ GET /api/tickets?page=1&pageSize=20 200 in 529ms
+ GET /api/tickets?page=1&pageSize=20 200 in 385ms
+ GET / 200 in 81ms
+ GET /api/integration-logs 200 in 32ms
+ GET /api/integration-logs 200 in 15ms
+ GET /api/tickets 200 in 1062ms
+ GET /api/tickets?page=1&pageSize=20 200 in 1085ms
+ GET /api/tickets 200 in 387ms
+ GET /api/tickets?page=1&pageSize=20 200 in 604ms
+ GET /api/tickets?page=1&pageSize=20 200 in 399ms
+ GET /api/tickets?page=1&pageSize=20 200 in 383ms
+ ✓ Compiled in 310ms (262 modules)
+ ✓ Compiled in 220ms (262 modules)
+ ✓ Compiled in 153ms (262 modules)
+ ✓ Compiled in 3.2s (511 modules)
+ GET / 200 in 125ms
+ ✓ Compiled /api/integration-logs in 135ms (331 modules)
+ ✓ Compiled (333 modules)
+ GET /api/integration-logs 200 in 372ms
+ GET /api/integration-logs 200 in 11ms
+ GET /api/tickets?page=1&pageSize=20 200 in 1610ms
+ GET /api/tickets 200 in 1666ms
+ GET /api/tickets 200 in 452ms
+ GET /api/tickets?page=1&pageSize=20 200 in 634ms
+ GET /api/tickets?page=1&pageSize=20 200 in 471ms
+ GET /api/tickets?page=1&pageSize=20 200 in 383ms
+ ✓ Compiled in 3.1s (511 modules)
+ ○ Compiling /api/integration-logs ...
+ ✓ Compiled /api/integration-logs in 1629ms (585 modules)
+ GET /api/integration-logs 200 in 1924ms
+ GET /_next/static/webpack/566e349e2b3d3c6a.webpack.hot-update.json 404 in 1982ms
+ GET /api/integration-logs 200 in 185ms
+ GET /api/tickets?page=1&pageSize=20 200 in 2307ms
+ GET /api/tickets 500 in 2310ms
+ GET / 200 in 342ms
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 801ms (812 modules)
+ GET /api/integration-logs 200 in 106ms
+ GET /api/integration-logs 200 in 14ms
+ GET /api/tickets 200 in 599ms
+ GET /api/tickets?page=1&pageSize=20 200 in 933ms
+ GET /api/tickets 200 in 421ms
+ GET /api/tickets?page=1&pageSize=20 200 in 517ms
+ ✓ Compiled in 3.1s (826 modules)
+ ✓ Compiled in 4.4s (826 modules)
+ ✓ Compiled in 3.7s (826 modules)
+ ✓ Compiled in 3.2s (736 modules)
+ ✓ Compiled in 3.3s (736 modules)
+ ✓ Compiled in 2.8s (736 modules)
+ ✓ Compiled in 2.8s (736 modules)
+ GET / 200 in 178ms
+ ✓ Compiled in 3.4s (736 modules)
+ ✓ Compiled in 162ms (448 modules)
+ ✓ Compiled in 240ms (448 modules)
+ ✓ Compiled in 199ms (448 modules)
+ ✓ Compiled in 196ms (448 modules)
+ ✓ Compiled in 172ms (448 modules)
+ ✓ Compiled in 193ms (448 modules)
+ ✓ Compiled in 2.3s (722 modules)
+ ○ Compiling /api/integration-logs ...
+ ✓ Compiled /api/integration-logs in 3.2s (736 modules)
+ ✓ Compiled in 0ms (373 modules)
+ GET /api/integration-logs 200 in 3194ms
+ GET /api/integration-logs 200 in 15ms
+ GET /api/tickets?page=1&pageSize=20 200 in 3939ms
+ GET /api/tickets 200 in 4098ms
+ GET /api/tickets?page=1&pageSize=20 200 in 476ms
+ GET /api/tickets 200 in 423ms
+ ✓ Compiled in 4.3s (821 modules)
+ ✓ Compiled in 3.1s (821 modules)
+ ✓ Compiled in 3.1s (821 modules)
+ ✓ Compiled in 3s (821 modules)
+ ✓ Compiled in 2.8s (736 modules)
+ ✓ Compiled in 4.1s (736 modules)
+ ✓ Compiled in 3.1s (736 modules)
+ ✓ Compiled in 2.9s (736 modules)
+ GET / 200 in 154ms
+ ○ Compiling /api/scan-records ...
+ ✓ Compiled /api/scan-records in 1388ms (365 modules)
+ GET /api/scan-records 200 in 2948ms
+ ○ Compiling /api/integration-logs ...
+ ✓ Compiled /api/integration-logs in 4.3s (736 modules)
+ ✓ Compiled in 0ms (375 modules)
+ GET /api/scan-records 200 in 3511ms
+ GET /api/integration-logs 200 in 3536ms
+ GET /api/scan-records 200 in 23ms
+ GET /api/integration-logs 200 in 32ms
+ GET /api/tickets?page=1&pageSize=20 200 in 3929ms
+ GET /api/tickets 200 in 4307ms
+ GET /api/tickets 200 in 397ms
+ ✓ Compiled in 3.2s (823 modules)
+ ✓ Compiled in 3.4s (823 modules)
+ GET / 200 in 120ms
+ ✓ Compiled in 3.4s (736 modules)
+ ✓ Compiled in 3.4s (736 modules)
+ ✓ Compiled in 3s (736 modules)
+ ✓ Compiled in 301ms (448 modules)
+ ✓ Compiled in 220ms (448 modules)
+ ✓ Compiled in 210ms (448 modules)
+ ✓ Compiled in 209ms (448 modules)
+ ✓ Compiled in 179ms (448 modules)
+ ✓ Compiled /_error in 553ms (724 modules)
+ GET / 200 in 165ms
+ ○ Compiling /api/integration-logs ...
+ ✓ Compiled /api/integration-logs in 953ms (372 modules)
+ ✓ Compiled in 1ms (376 modules)
+ ✓ Compiled in 1ms (376 modules)
+ ✓ Compiled in 0ms (376 modules)
+ GET /api/integration-logs 200 in 2085ms
+ GET /api/integration-logs 200 in 17ms
+ GET /api/tickets?page=1&pageSize=20 200 in 1849ms
+ GET /api/tickets 200 in 2900ms
+ GET /api/scan-records 200 in 3241ms
+ GET /api/tickets 200 in 548ms
+ GET /api/scan-records 200 in 640ms
+ ✓ Compiled in 3.8s (825 modules)
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 533ms (828 modules)
+ GET /api/tickets 404 in 722ms
+ GET /api/integration-logs 404 in 724ms
+ GET /api/scan-records?page=1&pageSize=5 404 in 725ms
+ GET /api/integration-logs 200 in 66ms
+ GET /api/tickets?page=1&pageSize=20 200 in 1021ms
+ GET /api/tickets 200 in 1007ms
+ GET /api/scan-records?page=1&pageSize=5 200 in 1172ms
+ ✓ Compiled in 3s (828 modules)
+ ✓ Compiled in 3.1s (826 modules)
+ ○ Compiling /api/scan-records ...

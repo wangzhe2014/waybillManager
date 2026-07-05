@@ -1,0 +1,106 @@
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, lstat 'D:\trae\waybillManager\.next\server\app\api\scan'
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../../.next/server/app/api/scan/route' in D:\trae\waybillManager\node_modules\next\dist\server for build dependencies doesn't lead to expected result 'D:\trae\waybillManager\.next\server\app\api\scan\route.js', but to 'Error: Can't resolve '../../../../.next/server/app/api/scan/route' in 'D:\trae\waybillManager\node_modules\next\dist\server'' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../../.next/server/app/api/scan/route (expected D:\trae\waybillManager\.next\server\app\api\scan\route.js)
+<w>  at file dependencies D:\trae\waybillManager\node_modules\next\dist\server\require.js
+<w>  at file D:\trae\waybillManager\node_modules\next\dist\server\require.js
+<w>  at file dependencies D:\trae\waybillManager\node_modules\next\dist\server\load-components.js
+<w>  at file D:\trae\waybillManager\node_modules\next\dist\server\load-components.js
+<w>  at file dependencies D:\trae\waybillManager\node_modules\next\dist\build\utils.js
+<w>  at file D:\trae\waybillManager\node_modules\next\dist\build\utils.js
+<w>  at file dependencies D:\trae\waybillManager\node_modules\next\dist\build\webpack\loaders\next-app-loader.js
+<w>  at file D:\trae\waybillManager\node_modules\next\dist\build\webpack\loaders\next-app-loader.js
+<w>  at file dependencies D:\trae\waybillManager\node_modules\next\dist\compiled\loader-runner\LoaderRunner.js
+<w>  at file D:\trae\waybillManager\node_modules\next\dist\compiled\loader-runner\LoaderRunner.js
+<w>  at file dependencies D:\trae\waybillManager\node_modules\next\dist\compiled\webpack\bundle5.js
+<w>  at file D:\trae\waybillManager\node_modules\next\dist\compiled\webpack\bundle5.js
+<w>  at file dependencies D:\trae\waybillManager\node_modules\next\dist\compiled\webpack\webpack.js
+<w>  at file D:\trae\waybillManager\node_modules\next\dist\compiled\webpack\webpack.js
+<w>  at file dependencies D:\trae\waybillManager\node_modules\next\dist\build\webpack\plugins\define-env-plugin.js
+<w>  at file D:\trae\waybillManager\node_modules\next\dist\build\webpack\plugins\define-env-plugin.js
+<w>  at file dependencies D:\trae\waybillManager\node_modules\next\dist\build\swc\index.js
+<w>  at file D:\trae\waybillManager\node_modules\next\dist\build\swc\index.js
+<w>  at file dependencies D:\trae\waybillManager\node_modules\next\dist\build\webpack\loaders\next-barrel-loader.js
+<w>  at file D:\trae\waybillManager\node_modules\next\dist\build\webpack\loaders\next-barrel-loader.js
+<w>  at resolve commonjs D:\trae\waybillManager\node_modules\next\dist\build\webpack\loaders\next-barrel-loader.js
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'D:\trae\waybillManager\.next\cache\webpack\server-development\4.pack.gz_' -> 'D:\trae\waybillManager\.next\cache\webpack\server-development\4.pack.gz'
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⨯ SyntaxError: Unexpected end of JSON input
+    at JSON.parse (<anonymous>)
+    at loadManifest (D:\trae\waybillManager\node_modules\next\dist\server\load-manifest.js:36:25)
+    at getMaybePagePath (D:\trae\waybillManager\node_modules\next\dist\server\require.js:57:59)
+    at getPagePath (D:\trae\waybillManager\node_modules\next\dist\server\require.js:92:22)
+    at requirePage (D:\trae\waybillManager\node_modules\next\dist\server\require.js:99:22)
+    at D:\trae\waybillManager\node_modules\next\dist\server\load-components.js:103:84
+    at async loadComponentsImpl (D:\trae\waybillManager\node_modules\next\dist\server\load-components.js:103:26)
+    at async DevServer.findPageComponentsImpl (D:\trae\waybillManager\node_modules\next\dist\server\next-server.js:714:36)
+    at async DevServer.findPageComponents (D:\trae\waybillManager\node_modules\next\dist\server\dev\next-dev-server.js:577:20)
+    at async DevServer.renderPageComponent (D:\trae\waybillManager\node_modules\next\dist\server\base-server.js:1910:24)
+    at async DevServer.renderToResponseImpl (D:\trae\waybillManager\node_modules\next\dist\server\base-server.js:1962:32)
+    at async DevServer.pipeImpl (D:\trae\waybillManager\node_modules\next\dist\server\base-server.js:922:25)
+    at async NextNodeServer.handleCatchallRenderRequest (D:\trae\waybillManager\node_modules\next\dist\server\next-server.js:272:17)
+    at async DevServer.handleRequestImpl (D:\trae\waybillManager\node_modules\next\dist\server\base-server.js:818:17)
+    at async D:\trae\waybillManager\node_modules\next\dist\server\dev\next-dev-server.js:339:20
+    at async Span.traceAsyncFn (D:\trae\waybillManager\node_modules\next\dist\trace\trace.js:154:20)
+    at async DevServer.handleRequest (D:\trae\waybillManager\node_modules\next\dist\server\dev\next-dev-server.js:336:24)
+    at async invokeRender (D:\trae\waybillManager\node_modules\next\dist\server\lib\router-server.js:179:21)
+    at async handleRequest (D:\trae\waybillManager\node_modules\next\dist\server\lib\router-server.js:359:24)
+    at async requestHandlerImpl (D:\trae\waybillManager\node_modules\next\dist\server\lib\router-server.js:383:13)
+    at async Server.requestListener (D:\trae\waybillManager\node_modules\next\dist\server\lib\start-server.js:141:13) {
+  page: '/api/tickets'
+}
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, lstat 'D:\trae\waybillManager\.next\server\app\api\scan'
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../../.next/server/app/api/scan/route' in D:\trae\waybillManager\node_modules\next\dist\server for build dependencies doesn't lead to expected result 'D:\trae\waybillManager\.next\server\app\api\scan\route.js', but to 'Error: Can't resolve '../../../../.next/server/app/api/scan/route' in 'D:\trae\waybillManager\node_modules\next\dist\server'' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../../.next/server/app/api/scan/route (expected D:\trae\waybillManager\.next\server\app\api\scan\route.js)
+<w>  at file dependencies D:\trae\waybillManager\node_modules\next\dist\server\require.js
+<w>  at file D:\trae\waybillManager\node_modules\next\dist\server\require.js
+<w>  at file dependencies D:\trae\waybillManager\node_modules\next\dist\server\load-components.js
+<w>  at file D:\trae\waybillManager\node_modules\next\dist\server\load-components.js
+<w>  at file dependencies D:\trae\waybillManager\node_modules\next\dist\build\utils.js
+<w>  at file D:\trae\waybillManager\node_modules\next\dist\build\utils.js
+<w>  at file dependencies D:\trae\waybillManager\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at file D:\trae\waybillManager\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at resolve commonjs D:\trae\waybillManager\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, lstat 'D:\trae\waybillManager\.next\server\app\api\scan'
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../../.next/server/app/api/scan/route' in D:\trae\waybillManager\node_modules\next\dist\server for build dependencies doesn't lead to expected result 'D:\trae\waybillManager\.next\server\app\api\scan\route.js', but to 'Error: Can't resolve '../../../../.next/server/app/api/scan/route' in 'D:\trae\waybillManager\node_modules\next\dist\server'' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../../.next/server/app/api/scan/route (expected D:\trae\waybillManager\.next\server\app\api\scan\route.js)
+<w>  at file dependencies D:\trae\waybillManager\node_modules\next\dist\server\require.js
+<w>  at file D:\trae\waybillManager\node_modules\next\dist\server\require.js
+<w>  at file dependencies D:\trae\waybillManager\node_modules\next\dist\server\load-components.js
+<w>  at file D:\trae\waybillManager\node_modules\next\dist\server\load-components.js
+<w>  at file dependencies D:\trae\waybillManager\node_modules\next\dist\build\utils.js
+<w>  at file D:\trae\waybillManager\node_modules\next\dist\build\utils.js
+<w>  at file dependencies D:\trae\waybillManager\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at file D:\trae\waybillManager\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at resolve commonjs D:\trae\waybillManager\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, lstat 'D:\trae\waybillManager\.next\server\app\api\scan'
+<w> [webpack.cache.PackFileCacheStrategy/webpack.FileSystemInfo] Resolving '../../../../.next/server/app/api/scan/route' in D:\trae\waybillManager\node_modules\next\dist\server for build dependencies doesn't lead to expected result 'D:\trae\waybillManager\.next\server\app\api\scan\route.js', but to 'Error: Can't resolve '../../../../.next/server/app/api/scan/route' in 'D:\trae\waybillManager\node_modules\next\dist\server'' instead. Resolving dependencies are ignored for this path.
+<w>  at resolve commonjs file ../../../../.next/server/app/api/scan/route (expected D:\trae\waybillManager\.next\server\app\api\scan\route.js)
+<w>  at file dependencies D:\trae\waybillManager\node_modules\next\dist\server\require.js
+<w>  at file D:\trae\waybillManager\node_modules\next\dist\server\require.js
+<w>  at file dependencies D:\trae\waybillManager\node_modules\next\dist\server\load-components.js
+<w>  at file D:\trae\waybillManager\node_modules\next\dist\server\load-components.js
+<w>  at file dependencies D:\trae\waybillManager\node_modules\next\dist\build\utils.js
+<w>  at file D:\trae\waybillManager\node_modules\next\dist\build\utils.js
+<w>  at file dependencies D:\trae\waybillManager\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at file D:\trae\waybillManager\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+<w>  at resolve commonjs D:\trae\waybillManager\node_modules\next\dist\build\webpack\loaders\next-route-loader\index.js
+ ⨯ SyntaxError: Unexpected end of JSON input
+    at JSON.parse (<anonymous>)
+    at loadManifest (D:\trae\waybillManager\node_modules\next\dist\server\load-manifest.js:36:25)
+    at DevServer.getNextFontManifest (D:\trae\waybillManager\node_modules\next\dist\server\next-server.js:750:47)
+    at DevServer.findPageComponents (D:\trae\waybillManager\node_modules\next\dist\server\dev\next-dev-server.js:571:43)
+    at async DevServer.renderPageComponent (D:\trae\waybillManager\node_modules\next\dist\server\base-server.js:1910:24)
+    at async DevServer.renderToResponseImpl (D:\trae\waybillManager\node_modules\next\dist\server\base-server.js:1962:32)
+    at async DevServer.pipeImpl (D:\trae\waybillManager\node_modules\next\dist\server\base-server.js:922:25)
+    at async NextNodeServer.handleCatchallRenderRequest (D:\trae\waybillManager\node_modules\next\dist\server\next-server.js:272:17)
+    at async DevServer.handleRequestImpl (D:\trae\waybillManager\node_modules\next\dist\server\base-server.js:818:17)
+    at async D:\trae\waybillManager\node_modules\next\dist\server\dev\next-dev-server.js:339:20
+    at async Span.traceAsyncFn (D:\trae\waybillManager\node_modules\next\dist\trace\trace.js:154:20)
+    at async DevServer.handleRequest (D:\trae\waybillManager\node_modules\next\dist\server\dev\next-dev-server.js:336:24)
+    at async invokeRender (D:\trae\waybillManager\node_modules\next\dist\server\lib\router-server.js:179:21)
+    at async handleRequest (D:\trae\waybillManager\node_modules\next\dist\server\lib\router-server.js:359:24)
+    at async requestHandlerImpl (D:\trae\waybillManager\node_modules\next\dist\server\lib\router-server.js:383:13)
+    at async Server.requestListener (D:\trae\waybillManager\node_modules\next\dist\server\lib\start-server.js:141:13) {
+  page: '/'
+}

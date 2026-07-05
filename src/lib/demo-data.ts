@@ -1,0 +1,132 @@
+import type { ExceptionTicket, IntegrationLog, ScanRecord, WaybillSnapshot } from '@/types'
+
+export const waybillSnapshots: WaybillSnapshot[] = [
+  {
+    waybillNo: 'PS2512220005001',
+    storeName: '海口龙湖天街店',
+    receiverName: '林晓',
+    receiverPhone: '138****2190',
+    receiverAddress: '海南省海口市龙华区龙湖天街',
+    amount: 2680,
+    skuCount: 8,
+    source: 'v2_realtime',
+    syncedAt: '2026-07-03 09:42:10',
+  },
+  {
+    waybillNo: 'HN202607030018',
+    storeName: '长沙五一广场店',
+    receiverName: '陈敏',
+    receiverPhone: '136****8012',
+    receiverAddress: '湖南省长沙市芙蓉区五一大道',
+    amount: 420,
+    skuCount: 3,
+    source: 'local_cache',
+    syncedAt: '2026-07-03 08:55:31',
+  },
+]
+
+export const tickets: ExceptionTicket[] = [
+  {
+    id: 'TQ-20260703-001',
+    waybillNo: 'PS2512220005001',
+    source: 'scan_triggered',
+    exceptionCategory: 'quality',
+    exceptionType: '外观破损',
+    status: 'level2_reviewing',
+    amount: 2680,
+    reporter: '扫描员-王磊',
+    currentApprover: '二级审批-许静',
+    createdAt: '2026-07-03 09:46:12',
+    dueAt: '2026-07-03 11:46:12',
+    version: 3,
+  },
+  {
+    id: 'TL-20260703-002',
+    waybillNo: 'HN202607030018',
+    source: 'manual_report',
+    exceptionCategory: 'logistics',
+    exceptionType: '客户拒收',
+    status: 'level1_reviewing',
+    amount: 420,
+    reporter: '客服-李月',
+    currentApprover: '一级审批-周航',
+    createdAt: '2026-07-03 10:05:08',
+    dueAt: '2026-07-04 10:05:08',
+    version: 1,
+  },
+  {
+    id: 'TL-20260702-030',
+    waybillNo: 'HN202607020077',
+    source: 'manual_report',
+    exceptionCategory: 'logistics',
+    exceptionType: '丢件',
+    status: 'completed',
+    amount: 960,
+    reporter: '物流-赵晴',
+    currentApprover: '已完成',
+    createdAt: '2026-07-02 15:11:20',
+    dueAt: '2026-07-03 15:11:20',
+    version: 5,
+  },
+]
+
+export const scanRecords: ScanRecord[] = [
+  {
+    id: 'SCAN-001',
+    waybillNo: 'PS2512220005001',
+    skuCode: 'ZBWP10086',
+    skuName: '冷链牛肉卷',
+    batchNo: 'BATCH-HK-0703-A',
+    operator: '王磊',
+    result: 'abnormal',
+    batchStatus: 'qc_hold',
+    ticketId: 'TQ-20260703-001',
+    matchedRuleId: 'QR-DAMAGE-03',
+    scannedAt: '2026-07-03 09:46:12',
+  },
+  {
+    id: 'SCAN-002',
+    waybillNo: 'HN202607030018',
+    skuCode: 'ZBWP20021',
+    skuName: '常温调味包',
+    batchNo: 'BATCH-CS-0703-C',
+    operator: '杨宁',
+    result: 'passed',
+    batchStatus: 'available',
+    matchedRuleId: undefined,
+    scannedAt: '2026-07-03 09:58:49',
+  },
+]
+
+export const integrationLogs: IntegrationLog[] = [
+  {
+    id: 'LOG-001',
+    requestId: 'req_20260703_094210_7b1c',
+    endpoint: 'GET /api/v3/shipments/PS2512220005001',
+    status: 'success',
+    statusCode: 200,
+    durationMs: 186,
+    message: '实时获取 V2 运单详情成功',
+    createdAt: '2026-07-03 09:42:10',
+  },
+  {
+    id: 'LOG-002',
+    requestId: 'req_20260703_085531_42ef',
+    endpoint: 'GET /api/v3/shipments/HN202607030018',
+    status: 'degraded',
+    statusCode: 504,
+    durationMs: 3000,
+    message: 'V2 超时，已回退本地快照',
+    createdAt: '2026-07-03 08:55:31',
+  },
+]
+
+export const statusText: Record<string, string> = {
+  pending_review: '待审批',
+  level1_reviewing: '一级审批中',
+  level2_reviewing: '二级审批中',
+  rejected: '已拒绝待重提',
+  executing: '执行中',
+  completed: '已完成',
+  closed: '已关闭',
+}
