@@ -1,5 +1,11 @@
 const CLOSED_STATUSES = ['completed', 'closed']
 
+function clampPositiveInteger(value, fallback) {
+  const number = Number(value)
+  if (!Number.isFinite(number) || number < 1) return fallback
+  return Math.floor(number)
+}
+
 export function createSupabaseStore(client) {
   return {
     async upsertWaybillSnapshot(snapshot) {
@@ -199,14 +205,39 @@ export function createSupabaseStore(client) {
       return (data || []).map(mapRowToTicket)
     },
 
-    async listIntegrationLogs(limit = 50) {
-      const { data, error } = await client
+    async listIntegrationLogs(options = { page: 1, pageSize: 10 }) {
+      if (typeof options === 'number') {
+        const { data, error } = await client
+          .from('integration_logs')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(options)
+        if (error) throw error
+        return (data || []).map(mapRowToIntegrationLog)
+      }
+
+      const pageSize = clampPositiveInteger(options.pageSize, 10)
+      const requestedPage = clampPositiveInteger(options.page, 1)
+      const from = (requestedPage - 1) * pageSize
+      const to = from + pageSize - 1
+      let query = client
         .from('integration_logs')
-        .select('*')
+        .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
-        .limit(limit)
+
+      if (options.requestId) query = query.ilike('request_id', `%${options.requestId}%`)
+      if (options.endpoint) query = query.ilike('endpoint', `%${options.endpoint}%`)
+
+      const { data, error, count } = await query.range(from, to)
       if (error) throw error
-      return (data || []).map(mapRowToIntegrationLog)
+      const total = Number(count || 0)
+      return {
+        logs: (data || []).map(mapRowToIntegrationLog),
+        total,
+        page: requestedPage,
+        pageSize,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      }
     },
 
     async listOverdueTickets(nowIso) {
@@ -424,11 +455,12 @@ export function createSupabaseStore(client) {
 }
 
 async function selectRows(client, table, ticketDbId) {
+  const orderColumn = table === 'scan_records' ? 'scanned_at' : 'created_at'
   const { data, error } = await client
     .from(table)
     .select('*')
     .eq('ticket_id', ticketDbId)
-    .order('created_at', { ascending: true })
+    .order(orderColumn, { ascending: true })
   if (error) throw error
   return data || []
 }

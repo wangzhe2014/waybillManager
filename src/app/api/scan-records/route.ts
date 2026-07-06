@@ -3,6 +3,9 @@ import { db } from '@/lib/server/mock-db'
 import { getStore } from '@/lib/server/store'
 import type { ScanRecord } from '@/types'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function GET(request: NextRequest) {
   try {
     const store = getStore()

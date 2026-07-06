@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getStore } from '@/lib/server/store'
 import { approveTicket } from '@/lib/core/ticket-service.mjs'
 import { resolveAutoExecutionAction } from '@/lib/core/workflow.mjs'
+import { getErrorMessage } from '@/lib/server/error-message'
 
 export async function POST(request: NextRequest, { params }: { params: { ticketId: string } }) {
   const payload = await request.json().catch(() => null)
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest, { params }: { params: { ticketI
       execution: 'execution' in transition ? transition.execution : null,
     })
   } catch (error) {
-    const message = error instanceof Error ? error.message : '审批失败'
+    const message = getErrorMessage(error, '审批失败')
     const status = message.includes('已被处理') ? 409 : message.includes('权限') || message.includes('不能审批自己') ? 403 : 400
     return NextResponse.json({ error: message }, { status })
   }

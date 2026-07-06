@@ -23,7 +23,7 @@ const LOGISTICS_AUTO_ACTION_BY_TYPE = {
   丢件: 'customer_compensation',
   破损: 'customer_compensation',
   客户拒收: 'return_to_stock',
-  超时未签收: 'customer_compensation',
+  超时未签收: 'reship',
   收货地址错误: 'reship',
   地址错误: 'reship',
 }

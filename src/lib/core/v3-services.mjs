@@ -87,6 +87,14 @@ export async function processQualityScanWithV2({
     throw new Error(`V2 SKU 归属校验失败：${v2Result.error || `HTTP ${v2Result.statusCode}`}`)
   }
 
+  await upsertScanWaybillSnapshot({
+    input,
+    skuValidation: v2Result.data,
+    store,
+    v2Client,
+    now,
+  })
+
   const openTicket = typeof store.findOpenQualityTicketByBatch === 'function'
     ? await store.findOpenQualityTicketByBatch({
         skuCode: input.skuCode,
@@ -189,6 +197,50 @@ function toSnapshot(waybill, syncedAt) {
     amount: Number(waybill.amount || 0),
     skuCount: Array.isArray(waybill.skus) ? waybill.skus.length : 0,
     skuSummary: waybill.skus || [],
+    source: 'v2_realtime',
+    syncedAt: formatDate(syncedAt),
+  }
+}
+
+async function upsertScanWaybillSnapshot({ input, skuValidation, store, v2Client, now }) {
+  if (typeof v2Client.getWaybillDetail === 'function') {
+    const detailResult = await v2Client.getWaybillDetail(input.waybillNo)
+    await writeIntegrationLog(store, {
+      ...detailResult,
+      endpoint: `GET /api/v3/shipments/${input.waybillNo}`,
+    })
+
+    if (detailResult.status === 'success' && detailResult.data) {
+      return store.upsertWaybillSnapshot(toSnapshot(detailResult.data, now()))
+    }
+  }
+
+  return store.upsertWaybillSnapshot(toMinimalScanSnapshot({
+    input,
+    skuValidation,
+    syncedAt: now(),
+  }))
+}
+
+function toMinimalScanSnapshot({ input, skuValidation, syncedAt }) {
+  const skuCode = skuValidation?.skuCode || input.skuCode
+  const skuName = skuValidation?.skuName || input.skuName || ''
+
+  return {
+    waybillNo: skuValidation?.waybillNo || input.waybillNo,
+    storeName: '',
+    receiverName: '',
+    receiverPhone: '',
+    receiverAddress: '',
+    amount: Number(input.amount || 0),
+    skuCount: skuCode ? 1 : 0,
+    skuSummary: skuCode
+      ? [{
+          skuCode,
+          skuName,
+          skuQuantity: Number(input.quantity || input.skuQuantity || 0),
+        }]
+      : [],
     source: 'v2_realtime',
     syncedAt: formatDate(syncedAt),
   }

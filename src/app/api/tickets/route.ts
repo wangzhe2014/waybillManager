@@ -5,6 +5,9 @@ import { queryParamsFromSearch, queryTickets } from '@/lib/server/ticket-query.m
 import { createV2Client } from '@/lib/v2-client'
 import { reportLogisticsExceptionWithV2 } from '@/lib/core/v3-services.mjs'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function GET(request: NextRequest) {
   try {
     const store = getStore()

@@ -38,6 +38,18 @@ export function createSupabaseStore(client: unknown): {
   }>
   listTickets(): Promise<ExceptionTicket[]>
   listIntegrationLogs(limit?: number): Promise<IntegrationLog[]>
+  listIntegrationLogs(options?: {
+    requestId?: string
+    endpoint?: string
+    page?: number
+    pageSize?: number
+  }): Promise<{
+    logs: IntegrationLog[]
+    total: number
+    page: number
+    pageSize: number
+    totalPages: number
+  }>
   listOverdueTickets(nowIso: string): Promise<ExceptionTicket[]>
   listApprovalRules(): Promise<Array<Record<string, unknown>>>
   listQualityRules(): Promise<Array<Record<string, unknown>>>

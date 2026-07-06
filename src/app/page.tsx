@@ -25,6 +25,7 @@ import {
 import { statusText } from '@/lib/demo-data'
 import { getActorProfile, roleOptions } from '@/lib/core/role-service.mjs'
 import { buildMonitoringSummary } from '@/lib/core/monitoring-service.mjs'
+import { scheduledTaskConfigs } from '@/lib/core/scheduled-tasks.mjs'
 import { buildApprovalWorkbench, getTicketActionBlockReason } from '@/lib/core/action-permissions.mjs'
 import {
   countDueSoonTickets,
@@ -34,7 +35,8 @@ import {
 import { filterAndPaginateRuleRows } from '@/lib/core/rule-service.mjs'
 import type { ExceptionTicket, IntegrationLog, ScanRecord, TicketDetail } from '@/types'
 
-type TabKey = 'dashboard' | 'scan' | 'tickets' | 'approvals' | 'compensations' | 'inventory' | 'rules' | 'monitoring'
+type TabKey = 'dashboard' | 'scan' | 'tickets' | 'approvals' | 'compensations' | 'inventory' | 'rules' | 'scheduledTasks' | 'monitoring'
+type ScheduledTaskConfig = (typeof scheduledTaskConfigs)[number]
 type ScanFormState = {
   waybillNo: string
   skuCode: string
@@ -55,6 +57,22 @@ type InlineMessage = {
   message: string
   tone: MessageTone
 }
+type ScheduledTaskRunResult = {
+  processed: number
+  trigger: string
+  authMode: string
+  executedAt: string
+}
+const ticketStatusOptions = [
+  { value: 'all', label: '全部状态' },
+  { value: 'pending_review', label: statusText.pending_review },
+  { value: 'level1_reviewing', label: statusText.level1_reviewing },
+  { value: 'level2_reviewing', label: statusText.level2_reviewing },
+  { value: 'rejected', label: statusText.rejected },
+  { value: 'executing', label: statusText.executing },
+  { value: 'completed', label: statusText.completed },
+  { value: 'closed', label: statusText.closed },
+]
 type DisplayScanRecord = ScanRecord & {
   matchedRuleName?: string
 }
@@ -108,11 +126,15 @@ const tabs: { key: TabKey; label: string; icon: typeof Gauge }[] = [
   { key: 'compensations', label: '赔付记录', icon: CheckCircle2 },
   { key: 'inventory', label: '库存流水', icon: Boxes },
   { key: 'rules', label: '规则配置', icon: Settings2 },
+  { key: 'scheduledTasks', label: '定时任务', icon: Clock3 },
   { key: 'monitoring', label: '接口监控', icon: Activity },
 ]
 
 const exceptionTypeOptions = ['丢件', '破损', '客户拒收', '超时未签收', '地址错误']
 const ticketListPageSize = 10
+const traceListPageSize = 10
+const logListPageSize = 10
+const scheduledTaskPageSize = 10
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabKey>('dashboard')
@@ -132,8 +154,36 @@ export default function Home() {
   const [ticketListRows, setTicketListRows] = useState<ExceptionTicket[]>([])
   const [scanRows, setScanRows] = useState<DisplayScanRecord[]>([])
   const [logRows, setLogRows] = useState<IntegrationLog[]>([])
+  const [logPage, setLogPage] = useState(1)
+  const [logRequestIdFilter, setLogRequestIdFilter] = useState('')
+  const [logEndpointFilter, setLogEndpointFilter] = useState('')
+  const [logPageInfo, setLogPageInfo] = useState({
+    total: 0,
+    page: 1,
+    pageSize: logListPageSize,
+    totalPages: 1,
+  })
   const [compensationRows, setCompensationRows] = useState<Record<string, unknown>[]>([])
   const [inventoryRows, setInventoryRows] = useState<Record<string, unknown>[]>([])
+  const [compensationPage, setCompensationPage] = useState(1)
+  const [inventoryPage, setInventoryPage] = useState(1)
+  const [compensationPageInfo, setCompensationPageInfo] = useState({
+    total: 0,
+    page: 1,
+    pageSize: traceListPageSize,
+    totalPages: 1,
+  })
+  const [inventoryPageInfo, setInventoryPageInfo] = useState({
+    total: 0,
+    page: 1,
+    pageSize: traceListPageSize,
+    totalPages: 1,
+  })
+  const [compensationKeyword, setCompensationKeyword] = useState('')
+  const [compensationDirection, setCompensationDirection] = useState('')
+  const [compensationStatus, setCompensationStatus] = useState('')
+  const [inventoryKeyword, setInventoryKeyword] = useState('')
+  const [inventoryMovementType, setInventoryMovementType] = useState('')
   const [scanPage, setScanPage] = useState(1)
   const [scanPageInfo, setScanPageInfo] = useState({
     total: 0,
@@ -147,6 +197,9 @@ export default function Home() {
   const [logsLoading, setLogsLoading] = useState(true)
   const [compensationsLoading, setCompensationsLoading] = useState(true)
   const [inventoryLoading, setInventoryLoading] = useState(true)
+  const [runningScheduledTaskId, setRunningScheduledTaskId] = useState('')
+  const [scheduledTaskResults, setScheduledTaskResults] = useState<Record<string, ScheduledTaskRunResult>>({})
+  const [scheduledTaskPage, setScheduledTaskPage] = useState(1)
   const [toast, setToast] = useState<InlineMessage | null>(null)
   const [scanAlert, setScanAlert] = useState<InlineMessage | null>(null)
   const [ticketAlert, setTicketAlert] = useState<InlineMessage | null>(null)
@@ -177,14 +230,23 @@ export default function Home() {
 
   useEffect(() => {
     refreshTickets()
-    refreshLogs()
-    refreshCompensations()
-    refreshInventoryMovements()
   }, [])
+
+  useEffect(() => {
+    refreshLogs(logPage)
+  }, [logPage, logRequestIdFilter, logEndpointFilter])
 
   useEffect(() => {
     refreshScanRecords(scanPage)
   }, [scanPage])
+
+  useEffect(() => {
+    refreshCompensations(compensationPage)
+  }, [compensationPage, compensationKeyword, compensationDirection, compensationStatus])
+
+  useEffect(() => {
+    refreshInventoryMovements(inventoryPage)
+  }, [inventoryPage, inventoryKeyword, inventoryMovementType])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -276,13 +338,25 @@ export default function Home() {
     }
   }
 
-  const refreshLogs = async () => {
+  const refreshLogs = async (page = logPage) => {
     setLogsLoading(true)
     try {
-      const response = await fetch('/api/integration-logs')
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(logListPageSize),
+      })
+      if (logRequestIdFilter.trim()) params.set('requestId', logRequestIdFilter.trim())
+      if (logEndpointFilter.trim()) params.set('endpoint', logEndpointFilter.trim())
+      const response = await fetch(`/api/integration-logs?${params.toString()}`)
       const data = await response.json()
       if (!response.ok || data.error) throw new Error(data.error || '接口日志加载失败')
       setLogRows(Array.isArray(data.logs) ? data.logs : [])
+      setLogPageInfo({
+        total: Number(data.total || 0),
+        page: Number(data.page || page),
+        pageSize: Number(data.pageSize || logListPageSize),
+        totalPages: Number(data.totalPages || 1),
+      })
     } catch (error) {
       notifyError(error instanceof Error ? error.message : '接口日志加载失败')
     } finally {
@@ -290,13 +364,59 @@ export default function Home() {
     }
   }
 
-  const refreshCompensations = async () => {
+  const handleRunScheduledTask = async (task: ScheduledTaskConfig) => {
+    setRunningScheduledTaskId(task.id)
+    try {
+      const response = await fetch(task.path, { method: task.manualMethod })
+      const data = await response.json()
+      if (!response.ok || data.error) throw new Error(data.error || `${task.name}执行失败`)
+      setScheduledTaskResults((current) => ({
+        ...current,
+        [task.id]: {
+          processed: Number(data.processed || 0),
+          trigger: String(data.trigger || 'manual'),
+          authMode: String(data.authMode || '-'),
+          executedAt: String(data.executedAt || new Date().toISOString()),
+        },
+      }))
+      notifySuccess(`${task.name}执行完成，处理 ${Number(data.processed || 0)} 条`)
+      refreshTickets()
+      refreshTicketList()
+      refreshLogs()
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : `${task.name}执行失败`)
+    } finally {
+      setRunningScheduledTaskId('')
+    }
+  }
+
+  const handleViewScheduledTaskLogs = (task: ScheduledTaskConfig) => {
+    setLogRequestIdFilter('')
+    setLogEndpointFilter(task.path)
+    setLogPage(1)
+    setActiveTab('monitoring')
+  }
+
+  const refreshCompensations = async (page = compensationPage) => {
     setCompensationsLoading(true)
     try {
-      const response = await fetch('/api/compensations')
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(traceListPageSize),
+      })
+      if (compensationKeyword.trim()) params.set('keyword', compensationKeyword.trim())
+      if (compensationDirection) params.set('direction', compensationDirection)
+      if (compensationStatus) params.set('status', compensationStatus)
+      const response = await fetch(`/api/compensations?${params.toString()}`)
       const data = await response.json()
       if (!response.ok || data.error) throw new Error(data.error || '赔付记录加载失败')
       setCompensationRows(Array.isArray(data.records) ? data.records : [])
+      setCompensationPageInfo({
+        total: Number(data.total || 0),
+        page: Number(data.page || page),
+        pageSize: Number(data.pageSize || traceListPageSize),
+        totalPages: Number(data.totalPages || 1),
+      })
     } catch (error) {
       notifyError(error instanceof Error ? error.message : '赔付记录加载失败')
     } finally {
@@ -304,13 +424,25 @@ export default function Home() {
     }
   }
 
-  const refreshInventoryMovements = async () => {
+  const refreshInventoryMovements = async (page = inventoryPage) => {
     setInventoryLoading(true)
     try {
-      const response = await fetch('/api/inventory-movements')
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(traceListPageSize),
+      })
+      if (inventoryKeyword.trim()) params.set('keyword', inventoryKeyword.trim())
+      if (inventoryMovementType) params.set('movementType', inventoryMovementType)
+      const response = await fetch(`/api/inventory-movements?${params.toString()}`)
       const data = await response.json()
       if (!response.ok || data.error) throw new Error(data.error || '库存流水加载失败')
       setInventoryRows(Array.isArray(data.records) ? data.records : [])
+      setInventoryPageInfo({
+        total: Number(data.total || 0),
+        page: Number(data.page || page),
+        pageSize: Number(data.pageSize || traceListPageSize),
+        totalPages: Number(data.totalPages || 1),
+      })
     } catch (error) {
       notifyError(error instanceof Error ? error.message : '库存流水加载失败')
     } finally {
@@ -661,10 +793,84 @@ export default function Home() {
               loading={ticketsLoading}
             />
           )}
-          {activeTab === 'compensations' && <CompensationPanel rows={compensationRows} loading={compensationsLoading} />}
-          {activeTab === 'inventory' && <InventoryPanel rows={inventoryRows} loading={inventoryLoading} />}
+          {activeTab === 'compensations' && (
+            <CompensationPanel
+              rows={compensationRows}
+              loading={compensationsLoading}
+              pageInfo={compensationPageInfo}
+              keyword={compensationKeyword}
+              direction={compensationDirection}
+              status={compensationStatus}
+              onKeywordChange={(value) => {
+                setCompensationPage(1)
+                setCompensationKeyword(value)
+              }}
+              onDirectionChange={(value) => {
+                setCompensationPage(1)
+                setCompensationDirection(value)
+              }}
+              onStatusChange={(value) => {
+                setCompensationPage(1)
+                setCompensationStatus(value)
+              }}
+              onPageChange={setCompensationPage}
+            />
+          )}
+          {activeTab === 'inventory' && (
+            <InventoryPanel
+              rows={inventoryRows}
+              loading={inventoryLoading}
+              pageInfo={inventoryPageInfo}
+              keyword={inventoryKeyword}
+              movementType={inventoryMovementType}
+              onKeywordChange={(value) => {
+                setInventoryPage(1)
+                setInventoryKeyword(value)
+              }}
+              onMovementTypeChange={(value) => {
+                setInventoryPage(1)
+                setInventoryMovementType(value)
+              }}
+              onPageChange={setInventoryPage}
+            />
+          )}
           {activeTab === 'rules' && <RulesPanel />}
-          {activeTab === 'monitoring' && <MonitoringPanel logRows={logRows} summary={monitoringSummary} loading={logsLoading} />}
+          {activeTab === 'scheduledTasks' && (
+            <ScheduledTasksPanel
+              tasks={scheduledTaskConfigs}
+              results={scheduledTaskResults}
+              runningTaskId={runningScheduledTaskId}
+              page={scheduledTaskPage}
+              pageSize={scheduledTaskPageSize}
+              onPageChange={setScheduledTaskPage}
+              onRunTask={handleRunScheduledTask}
+              onViewLogs={handleViewScheduledTaskLogs}
+            />
+          )}
+          {activeTab === 'monitoring' && (
+            <MonitoringPanel
+              logRows={logRows}
+              summary={monitoringSummary}
+              loading={logsLoading}
+              pageInfo={logPageInfo}
+              requestIdFilter={logRequestIdFilter}
+              endpointFilter={logEndpointFilter}
+              onRequestIdFilterChange={(value) => {
+                setLogPage(1)
+                setLogRequestIdFilter(value)
+              }}
+              onEndpointFilterChange={(value) => {
+                setLogPage(1)
+                setLogEndpointFilter(value)
+              }}
+              onResetFilters={() => {
+                setLogPage(1)
+                setLogRequestIdFilter('')
+                setLogEndpointFilter('')
+              }}
+              onPageChange={setLogPage}
+            />
+          )}
         </section>
       </div>
     </main>
@@ -943,11 +1149,9 @@ function TicketPanel({
           <SectionTitle icon={ListFilter} title="工单列表与追踪" description="支持按状态、异常类型、运单号和审批人筛选，详情页应展示完整审计日志。" compact />
           <div className="flex flex-wrap items-center gap-3">
             <select value={statusFilter} onChange={(event) => onStatusFilterChange(event.target.value)} className="rounded-lg border border-gray-200 px-3 py-2 text-sm">
-              <option value="all">全部状态</option>
-              <option value="level1_reviewing">一级审批中</option>
-              <option value="level2_reviewing">二级审批中</option>
-              <option value="executing">执行中</option>
-              <option value="completed">已完成</option>
+              {ticketStatusOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
             </select>
             <button onClick={onOpenReportModal} className="jt-btn-primary h-10 px-4 text-sm">
               上报异常
@@ -1312,13 +1516,65 @@ function ApprovalPanel({
 function CompensationPanel({
   rows,
   loading,
+  pageInfo,
+  keyword,
+  direction,
+  status,
+  onKeywordChange,
+  onDirectionChange,
+  onStatusChange,
+  onPageChange,
 }: {
   rows: Record<string, unknown>[]
   loading: boolean
+  pageInfo: {
+    total: number
+    page: number
+    pageSize: number
+    totalPages: number
+  }
+  keyword: string
+  direction: string
+  status: string
+  onKeywordChange: (value: string) => void
+  onDirectionChange: (value: string) => void
+  onStatusChange: (value: string) => void
+  onPageChange: (page: number) => void
 }) {
   return (
     <section className="jt-card overflow-hidden">
       <SectionTitle icon={CheckCircle2} title="赔付记录" description="集中查看审批通过后自动生成的客户赔付和供应商追偿记录。" />
+      <div className="grid gap-3 border-y border-gray-100 px-6 py-4 md:grid-cols-4">
+        <input
+          className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          placeholder="工单号 / 运单号"
+          value={keyword}
+          onChange={(event) => onKeywordChange(event.target.value)}
+        />
+        <select className="rounded-lg border border-gray-200 px-3 py-2 text-sm" value={direction} onChange={(event) => onDirectionChange(event.target.value)}>
+          <option value="">全部赔付方向</option>
+          <option value="customer_compensation">赔付客户</option>
+          <option value="supplier_recovery">向供应商追偿</option>
+        </select>
+        <select className="rounded-lg border border-gray-200 px-3 py-2 text-sm" value={status} onChange={(event) => onStatusChange(event.target.value)}>
+          <option value="">全部状态</option>
+          <option value="pending_payment">待支付</option>
+          <option value="pending_reconciliation">待对账</option>
+          <option value="paid">已支付</option>
+          <option value="reconciled">已对账</option>
+        </select>
+        <button
+          onClick={() => {
+            onKeywordChange('')
+            onDirectionChange('')
+            onStatusChange('')
+            onPageChange(1)
+          }}
+          className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+        >
+          重置
+        </button>
+      </div>
       <div className="overflow-x-auto scrollbar-thin">
         <table className="w-full min-w-[980px] text-sm">
           <thead className="bg-gray-50 text-left text-gray-500">
@@ -1354,6 +1610,7 @@ function CompensationPanel({
           </tbody>
         </table>
       </div>
+      <TracePagination pageInfo={pageInfo} loading={loading} onPageChange={onPageChange} />
     </section>
   )
 }
@@ -1361,13 +1618,56 @@ function CompensationPanel({
 function InventoryPanel({
   rows,
   loading,
+  pageInfo,
+  keyword,
+  movementType,
+  onKeywordChange,
+  onMovementTypeChange,
+  onPageChange,
 }: {
   rows: Record<string, unknown>[]
   loading: boolean
+  pageInfo: {
+    total: number
+    page: number
+    pageSize: number
+    totalPages: number
+  }
+  keyword: string
+  movementType: string
+  onKeywordChange: (value: string) => void
+  onMovementTypeChange: (value: string) => void
+  onPageChange: (page: number) => void
 }) {
   return (
     <section className="jt-card overflow-hidden">
       <SectionTitle icon={Boxes} title="库存流水" description="集中查看审批执行或品控处理产生的库存联动记录。" />
+      <div className="grid gap-3 border-y border-gray-100 px-6 py-4 md:grid-cols-3">
+        <input
+          className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          placeholder="工单号 / 运单号"
+          value={keyword}
+          onChange={(event) => onKeywordChange(event.target.value)}
+        />
+        <select className="rounded-lg border border-gray-200 px-3 py-2 text-sm" value={movementType} onChange={(event) => onMovementTypeChange(event.target.value)}>
+          <option value="">全部库存动作</option>
+          <option value="stock_out">库存出库</option>
+          <option value="stock_in">退货入库</option>
+          <option value="status_change">批次状态变更</option>
+          <option value="qc_release">品控放行</option>
+          <option value="qc_close">品控关闭</option>
+        </select>
+        <button
+          onClick={() => {
+            onKeywordChange('')
+            onMovementTypeChange('')
+            onPageChange(1)
+          }}
+          className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+        >
+          重置
+        </button>
+      </div>
       <div className="overflow-x-auto scrollbar-thin">
         <table className="w-full min-w-[980px] text-sm">
           <thead className="bg-gray-50 text-left text-gray-500">
@@ -1403,7 +1703,61 @@ function InventoryPanel({
           </tbody>
         </table>
       </div>
+      <TracePagination pageInfo={pageInfo} loading={loading} onPageChange={onPageChange} />
     </section>
+  )
+}
+
+function TracePagination({
+  pageInfo,
+  loading,
+  onPageChange,
+}: {
+  pageInfo: {
+    total: number
+    page: number
+    pageSize: number
+    totalPages: number
+  }
+  loading: boolean
+  onPageChange: (page: number) => void
+}) {
+  return (
+    <div className="flex flex-col gap-3 border-t border-gray-100 px-6 py-4 text-sm text-gray-600 md:flex-row md:items-center md:justify-between">
+      <span>
+        共 {pageInfo.total} 条，每页 {pageInfo.pageSize} 条，第 {pageInfo.page} / {pageInfo.totalPages} 页
+      </span>
+      <div className="flex flex-wrap gap-2">
+        <button
+          disabled={pageInfo.page <= 1 || loading}
+          onClick={() => onPageChange(1)}
+          className="rounded-lg border border-gray-200 px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          首页
+        </button>
+        <button
+          disabled={pageInfo.page <= 1 || loading}
+          onClick={() => onPageChange(Math.max(1, pageInfo.page - 1))}
+          className="rounded-lg border border-gray-200 px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          上一页
+        </button>
+        <button
+          disabled={pageInfo.page >= pageInfo.totalPages || loading}
+          onClick={() => onPageChange(Math.min(pageInfo.totalPages, pageInfo.page + 1))}
+          className="rounded-lg border border-gray-200 px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          下一页
+        </button>
+        <button
+          disabled={pageInfo.page >= pageInfo.totalPages || loading}
+          onClick={() => onPageChange(pageInfo.totalPages)}
+          className="rounded-lg border border-gray-200 px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          末页
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -1783,14 +2137,125 @@ function RulesPanel() {
   )
 }
 
+function ScheduledTasksPanel({
+  tasks,
+  results,
+  runningTaskId,
+  page,
+  pageSize,
+  onPageChange,
+  onRunTask,
+  onViewLogs,
+}: {
+  tasks: ScheduledTaskConfig[]
+  results: Record<string, ScheduledTaskRunResult>
+  runningTaskId: string
+  page: number
+  pageSize: number
+  onPageChange: (page: number) => void
+  onRunTask: (task: ScheduledTaskConfig) => void
+  onViewLogs: (task: ScheduledTaskConfig) => void
+}) {
+  const total = tasks.length
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const currentPage = Math.min(page, totalPages)
+  const start = (currentPage - 1) * pageSize
+  const pageRows = tasks.slice(start, start + pageSize)
+  const pageInfo = { total, page: currentPage, pageSize, totalPages }
+
+  return (
+    <section className="jt-card overflow-hidden">
+      <SectionTitle icon={Clock3} title="定时任务" description="集中管理后台任务，可手动执行并跳转查看对应接口日志。" />
+      <div className="overflow-x-auto scrollbar-thin">
+        <table className="w-full min-w-[1080px] text-sm">
+          <thead className="bg-gray-50 text-left text-gray-500">
+            <tr>
+              <th className="px-5 py-4">任务</th>
+              <th className="px-5 py-4">频率</th>
+              <th className="px-5 py-4">接口</th>
+              <th className="px-5 py-4">最近手动执行</th>
+              <th className="px-5 py-4">结果</th>
+              <th className="px-5 py-4 text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pageRows.map((task) => {
+              const result = results[task.id]
+              const running = runningTaskId === task.id
+              return (
+                <tr key={task.id} className="border-t border-gray-100">
+                  <td className="px-5 py-4">
+                    <div className="font-semibold text-gray-900">{task.name}</div>
+                    <div className="mt-1 text-xs text-gray-500">{task.category} · {task.description}</div>
+                  </td>
+                  <td className="px-5 py-4">
+                    <div>{task.scheduleText}</div>
+                    <div className="mt-1 font-mono text-xs text-gray-500">{task.schedule}</div>
+                  </td>
+                  <td className="px-5 py-4 font-mono text-xs text-gray-600">{task.path}</td>
+                  <td className="px-5 py-4">{result ? formatMetricTime(result.executedAt) : '-'}</td>
+                  <td className="px-5 py-4">
+                    {result ? (
+                      <span>处理 {result.processed} 条 · {result.trigger} · {result.authMode}</span>
+                    ) : (
+                      <span className="text-gray-400">暂无手动执行记录</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => onViewLogs(task)}
+                        className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                      >
+                        查看日志
+                      </button>
+                      <button
+                        onClick={() => onRunTask(task)}
+                        disabled={!task.enabled || running}
+                        className="jt-btn-primary h-9 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {running ? '执行中...' : '立即执行'}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+      <TracePagination pageInfo={pageInfo} loading={Boolean(runningTaskId)} onPageChange={onPageChange} />
+    </section>
+  )
+}
+
 function MonitoringPanel({
   logRows,
   summary,
   loading,
+  pageInfo,
+  requestIdFilter,
+  endpointFilter,
+  onRequestIdFilterChange,
+  onEndpointFilterChange,
+  onResetFilters,
+  onPageChange,
 }: {
   logRows: IntegrationLog[]
   summary: { lastSyncAt: string; successRate: number; degradedCount: number }
   loading: boolean
+  pageInfo: {
+    total: number
+    page: number
+    pageSize: number
+    totalPages: number
+  }
+  requestIdFilter: string
+  endpointFilter: string
+  onRequestIdFilterChange: (value: string) => void
+  onEndpointFilterChange: (value: string) => void
+  onResetFilters: () => void
+  onPageChange: (page: number) => void
 }) {
   const hasLogs = logRows.length > 0
 
@@ -1801,6 +2266,26 @@ function MonitoringPanel({
         <MiniMetric label="最近同步" value={formatMetricTime(summary.lastSyncAt)} />
         <MiniMetric label="成功率" value={loading || !hasLogs ? '-' : `${summary.successRate}%`} />
         <MiniMetric label="降级次数" value={loading || !hasLogs ? '-' : summary.degradedCount} />
+      </div>
+      <div className="grid gap-3 border-b border-gray-100 px-6 py-4 md:grid-cols-[1fr_1fr_auto]">
+        <input
+          className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          placeholder="Request ID"
+          value={requestIdFilter}
+          onChange={(event) => onRequestIdFilterChange(event.target.value)}
+        />
+        <input
+          className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          placeholder="接口路径"
+          value={endpointFilter}
+          onChange={(event) => onEndpointFilterChange(event.target.value)}
+        />
+        <button
+          onClick={onResetFilters}
+          className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+        >
+          重置
+        </button>
       </div>
       <div className="overflow-x-auto scrollbar-thin">
         <table className="w-full min-w-[980px] text-sm">
@@ -1827,7 +2312,7 @@ function MonitoringPanel({
                 <td className="px-5 py-4 font-mono text-xs">{log.requestId}</td>
                 <td className="px-5 py-4">{log.endpoint}</td>
                 <td className="px-5 py-4 font-mono text-xs text-gray-600">{log.requestDigest || '-'}</td>
-                <td className="px-5 py-4"><Badge tone={log.status === 'success' ? 'green' : 'orange'}>{log.status}</Badge></td>
+                <td className="px-5 py-4"><Badge tone={log.status === 'success' ? 'green' : 'orange'}>{integrationLogStatusText(log.status)}</Badge></td>
                 <td className="px-5 py-4">{log.durationMs} ms</td>
                 <td className="px-5 py-4">{log.message}</td>
               </tr>
@@ -1835,6 +2320,7 @@ function MonitoringPanel({
           </tbody>
         </table>
       </div>
+      <TracePagination pageInfo={pageInfo} loading={loading} onPageChange={onPageChange} />
     </section>
   )
 }
@@ -1843,6 +2329,15 @@ function messageToneClass(tone: MessageTone) {
   if (tone === 'error') return 'border-red-200 bg-red-50 text-red-700'
   if (tone === 'success') return 'border-[#d0e8e8] bg-[#e8fafa] text-[#0b7774]'
   return 'border-gray-200 bg-gray-50 text-gray-600'
+}
+
+function integrationLogStatusText(status: IntegrationLog['status']) {
+  const labels: Record<IntegrationLog['status'], string> = {
+    success: '成功',
+    failed: '失败',
+    degraded: '降级',
+  }
+  return labels[status] || status
 }
 
 function batchStatusText(status: ScanRecord['batchStatus']) {

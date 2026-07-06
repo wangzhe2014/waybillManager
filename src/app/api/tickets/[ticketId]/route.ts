@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getStore } from '@/lib/server/store'
+import { getErrorMessage } from '@/lib/server/error-message'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export async function GET(_request: Request, { params }: { params: { ticketId: string } }) {
   try {
@@ -11,7 +15,7 @@ export async function GET(_request: Request, { params }: { params: { ticketId: s
     return NextResponse.json({ detail })
   } catch (error) {
     return NextResponse.json({
-      error: error instanceof Error ? error.message : '读取工单详情失败',
+      error: getErrorMessage(error, '读取工单详情失败'),
     }, { status: 500 })
   }
 }

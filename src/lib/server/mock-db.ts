@@ -1,4 +1,5 @@
 import { integrationLogs, scanRecords, tickets, waybillSnapshots } from '@/lib/demo-data'
+import { filterAndPaginateIntegrationLogs } from '@/lib/core/integration-log-query.mjs'
 import type { ExceptionTicket, IntegrationLog, ScanRecord, TicketDetail, WaybillSnapshot } from '@/types'
 
 export const defaultApprovalRules = [
@@ -273,8 +274,9 @@ export const mockStore = {
     return db.tickets
   },
 
-  async listIntegrationLogs() {
-    return db.logs
+  async listIntegrationLogs(options?: { requestId?: string; endpoint?: string; page?: number; pageSize?: number }) {
+    if (!options) return db.logs
+    return filterAndPaginateIntegrationLogs(db.logs, options)
   },
 
   async listOverdueTickets(nowIso: string) {

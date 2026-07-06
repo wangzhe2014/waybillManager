@@ -85,3 +85,14 @@ npm run build
 ```
 
 `npm run build` 用于最终生产构建验证；如本机耗时过长，可先以 `npm test` 和 `npm run typecheck` 作为快速验收。
+
+## 定时任务监控
+
+- 任务配置：`src/lib/core/scheduled-tasks.mjs` 维护定时任务列表，新增任务时追加配置即可进入监控页。
+- 后台定时：`vercel.json` 已配置每 5 分钟请求一次 `/api/timeouts/process`。
+- 触发方式：`GET /api/timeouts/process` 用于后台 Cron，`POST /api/timeouts/process` 用于监控页手动执行一次。
+- 安全配置：Vercel 部署建议配置 `CRON_SECRET`；外部调度器也可使用 `TIMEOUT_CRON_SECRET`，接口会兼容读取两者。
+- 鉴权方式：请求头 `Authorization: Bearer <secret>` 或 `x-cron-secret: <secret>` 任一匹配即可执行。
+- 页面入口：左侧“定时任务”页查看任务频率、接口、最近手动执行结果，并可手动执行一次用于验收和排障。
+- 日志查询：左侧“接口监控”页支持按 `requestId`、接口路径搜索，并按每页 10 条分页展示。
+- 执行日志：后台或手动触发都会写入 `integration_logs`，接口监控日志表可看到 `/api/timeouts/process` 的执行记录。

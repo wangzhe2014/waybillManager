@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node tests/workflow.test.mjs && node tests/ticket-service.test.mjs && node tests/v3-services.test.mjs && node tests/supabase-store.test.mjs && node tests/timeout-service.test.mjs && node tests/ticket-query.test.mjs && node tests/rule-service.test.mjs && node tests/role-service.test.mjs && node tests/action-permissions.test.mjs && node tests/dashboard-service.test.mjs && node tests/v2-url.test.mjs && node tests/v2-retry.test.mjs && node tests/execution-service.test.mjs && node tests/monitoring-service.test.mjs",
+    "test": "node tests/workflow.test.mjs && node tests/ticket-service.test.mjs && node tests/v3-services.test.mjs && node tests/supabase-store.test.mjs && node tests/timeout-service.test.mjs && node tests/timeout-job.test.mjs && node tests/cron-auth.test.mjs && node tests/scheduled-tasks.test.mjs && node tests/integration-log-query.test.mjs && node tests/ticket-query.test.mjs && node tests/trace-query.test.mjs && node tests/rule-service.test.mjs && node tests/role-service.test.mjs && node tests/action-permissions.test.mjs && node tests/dashboard-service.test.mjs && node tests/v2-url.test.mjs && node tests/v2-retry.test.mjs && node tests/execution-service.test.mjs && node tests/monitoring-service.test.mjs",
     "test:full": "npm run typecheck && npm test",
     "typecheck": "tsc --noEmit"
   },

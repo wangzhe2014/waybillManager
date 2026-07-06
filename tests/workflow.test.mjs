@@ -98,6 +98,10 @@ test('approval success resolves a deterministic downstream execution action', ()
     exceptionType: '丢件',
   }), 'customer_compensation')
   assert.equal(resolveAutoExecutionAction({
+    exceptionCategory: 'logistics',
+    exceptionType: '超时未签收',
+  }), 'reship')
+  assert.equal(resolveAutoExecutionAction({
     exceptionCategory: 'quality',
     exceptionType: '数量不符',
   }), 'repurchase')

@@ -388,6 +388,7 @@ test('maps configurable approval and quality rules from Supabase rows', () => {
 
 test('loads ticket detail by business ticket number with audit records', async () => {
   const calls = []
+  const orderCalls = []
   const fakeClient = {
     from(table) {
       calls.push(table)
@@ -422,7 +423,10 @@ test('loads ticket detail by business ticket number with audit records', async (
       return {
         select() { return this },
         eq() { return this },
-        order() { return this },
+        order(column, options) {
+          orderCalls.push({ table, column, options })
+          return this
+        },
         async then(resolve) {
           const dataByTable = {
             approval_records: [{ id: 'approval-1', result: 'approved' }],
@@ -445,6 +449,13 @@ test('loads ticket detail by business ticket number with audit records', async (
   assert.equal(detail.compensations.length, 1)
   assert.equal(detail.inventoryMovements.length, 1)
   assert.equal(detail.events.length, 1)
+  assert.deepEqual(orderCalls, [
+    { table: 'approval_records', column: 'created_at', options: { ascending: true } },
+    { table: 'scan_records', column: 'scanned_at', options: { ascending: true } },
+    { table: 'compensation_records', column: 'created_at', options: { ascending: true } },
+    { table: 'inventory_movements', column: 'created_at', options: { ascending: true } },
+    { table: 'ticket_events', column: 'created_at', options: { ascending: true } },
+  ])
 })
 
 test('approves ticket through a single Supabase RPC transition', async () => {

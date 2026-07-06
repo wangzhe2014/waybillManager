@@ -226,6 +226,120 @@ test('quality scan validates SKU through V2 and reuses an open quality ticket fo
   assert.equal(store.state.logs[0].requestId, 'req-scan-ok')
 })
 
+test('quality scan writes a full waybill snapshot after V2 SKU validation succeeds', async () => {
+  const store = createMemoryStore()
+  const v2Client = {
+    async validateWaybillSku(waybillNo, skuCode) {
+      return {
+        data: {
+          valid: true,
+          waybillNo,
+          skuCode,
+          skuName: '冷链牛肉卷',
+        },
+        requestId: 'req-sku-ok',
+        status: 'success',
+        statusCode: 200,
+        durationMs: 30,
+      }
+    },
+    async getWaybillDetail(waybillNo) {
+      assert.equal(waybillNo, 'PS2512220005001')
+      return {
+        data: {
+          waybillNo,
+          storeName: '海口龙湖天街店',
+          receiverName: '林晓',
+          receiverPhone: '13800002190',
+          receiverAddress: '海南省海口市龙华区龙湖天街',
+          amount: 2680,
+          skus: [{ skuCode: 'ZBWP10086', skuName: '冷链牛肉卷', skuQuantity: 4 }],
+        },
+        requestId: 'req-detail-ok',
+        status: 'success',
+        statusCode: 200,
+        durationMs: 41,
+      }
+    },
+  }
+
+  await processQualityScanWithV2({
+    input: {
+      waybillNo: 'PS2512220005001',
+      skuCode: 'ZBWP10086',
+      batchNo: 'BATCH-HK-0703-SNAPSHOT',
+      operator: '扫描员-王磊',
+      damageLevel: 0,
+    },
+    qualityRules: [],
+    store,
+    v2Client,
+    now: () => new Date('2026-07-03T02:00:00.000Z'),
+    idFactory: (prefix) => `${prefix}-fixed`,
+  })
+
+  assert.equal(store.state.snapshots.length, 1)
+  assert.equal(store.state.snapshots[0].waybillNo, 'PS2512220005001')
+  assert.equal(store.state.snapshots[0].receiverName, '林晓')
+  assert.equal(store.state.snapshots[0].amount, 2680)
+  assert.equal(store.state.logs.length, 2)
+  assert.equal(store.state.logs[0].requestId, 'req-sku-ok')
+  assert.equal(store.state.logs[1].requestId, 'req-detail-ok')
+})
+
+test('quality scan writes a minimal snapshot when V2 detail refresh fails', async () => {
+  const store = createMemoryStore()
+  const v2Client = {
+    async validateWaybillSku(waybillNo, skuCode) {
+      return {
+        data: {
+          valid: true,
+          waybillNo,
+          skuCode,
+          skuName: '冷链牛肉卷',
+        },
+        requestId: 'req-sku-ok',
+        status: 'success',
+        statusCode: 200,
+        durationMs: 30,
+      }
+    },
+    async getWaybillDetail() {
+      return {
+        data: null,
+        requestId: 'req-detail-timeout',
+        status: 'failed',
+        statusCode: 504,
+        durationMs: 3000,
+        error: 'V2 timeout',
+      }
+    },
+  }
+
+  const result = await processQualityScanWithV2({
+    input: {
+      waybillNo: 'PS2512220005001',
+      skuCode: 'ZBWP10086',
+      batchNo: 'BATCH-HK-0703-MIN',
+      operator: '扫描员-王磊',
+      damageLevel: 0,
+    },
+    qualityRules: [],
+    store,
+    v2Client,
+    now: () => new Date('2026-07-03T02:00:00.000Z'),
+    idFactory: (prefix) => `${prefix}-fixed`,
+  })
+
+  assert.equal(result.scan.waybillNo, 'PS2512220005001')
+  assert.equal(store.state.snapshots.length, 1)
+  assert.equal(store.state.snapshots[0].waybillNo, 'PS2512220005001')
+  assert.equal(store.state.snapshots[0].skuSummary[0].skuCode, 'ZBWP10086')
+  assert.equal(store.state.snapshots[0].source, 'v2_realtime')
+  assert.equal(store.state.logs.length, 2)
+  assert.equal(store.state.logs[1].status, 'failed')
+})
+
 test('quality scan reuses an open quality ticket for the same SKU batch across waybills', async () => {
   const openTicket = {
     id: 'TQ-open-batch',

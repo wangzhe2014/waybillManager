@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { buildRuleRows, normalizeRulePayload } from '@/lib/core/rule-service.mjs'
 import { getStore } from '@/lib/server/store'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function GET() {
   try {
     const store = getStore()
