@@ -2582,6 +2582,80 @@ function inventoryMovementText(value: string) {
   return labels[value] || value || '-'
 }
 
+function approvalLevelText(value: string) {
+  const labels: Record<string, string> = {
+    level1: '一级审批',
+    level2: '二级审批',
+    qc_fast_release: '品控主管快速放行',
+  }
+  return labels[value] || value || '-'
+}
+
+function approvalResultText(value: string) {
+  const labels: Record<string, string> = {
+    approved: '通过',
+    rejected: '驳回',
+    fast_released: '快速放行',
+    auto_escalated: '超时自动升级',
+    auto_rejected: '超时自动驳回',
+  }
+  return labels[value] || value || '-'
+}
+
+function scanResultText(value: string) {
+  const labels: Record<string, string> = {
+    passed: '正常通过',
+    abnormal: '异常暂扣',
+  }
+  return labels[value] || value || '-'
+}
+
+function ticketEventText(value: string) {
+  const labels: Record<string, string> = {
+    ticket_created: '工单创建',
+    ticket_approved: '审批通过',
+    ticket_rejected: '审批驳回',
+    ticket_resubmitted: '工单重新提交',
+    ticket_completed: '工单完成',
+    ticket_closed: '工单关闭',
+    ticket_fast_released: '品控快速放行',
+    timeout_auto_escalated: '超时自动升级',
+    timeout_auto_rejected: '超时自动驳回',
+    execution_completed: '执行联动完成',
+  }
+  return labels[value] || value || '-'
+}
+
+function eventDetailText(value: string) {
+  if (!value || value === '-') return '-'
+  try {
+    const detail = JSON.parse(value) as Record<string, unknown>
+    const parts: string[] = []
+    if (detail.reason) parts.push(`原因：${String(detail.reason)}`)
+    if (detail.resubmitCount !== undefined) parts.push(`重提次数：${String(detail.resubmitCount)}`)
+    if (detail.action) parts.push(`动作：${executionActionText(String(detail.action))}`)
+    if (detail.batchStatus) parts.push(`批次状态：${batchStatusText(String(detail.batchStatus) as ScanRecord['batchStatus'])}`)
+    if (detail.processed !== undefined) parts.push(`处理数量：${String(detail.processed)}`)
+    if (detail.trigger) parts.push(`触发方式：${String(detail.trigger)}`)
+    return parts.length > 0 ? parts.join('；') : value
+  } catch {
+    return value
+  }
+}
+
+function executionActionText(value: string) {
+  const labels: Record<string, string> = {
+    customer_compensation: '赔付客户',
+    reship: '重新发货',
+    return_to_stock: '退货入库',
+    release: '放行货物',
+    return_supplier: '退回供应商',
+    repurchase: '重新采购',
+    downgrade: '降级处理',
+  }
+  return labels[value] || value || '-'
+}
+
 function formatMetricTime(value: string) {
   if (!value || value === '-') return '-'
   const date = new Date(value)
@@ -2729,8 +2803,8 @@ function TicketDetailPanel({
                   rows={detail.approvals}
                   fields={[
                     { label: '审批人', keys: ['approver_id', 'approverId'] },
-                    { label: '层级', keys: ['approval_level', 'approvalLevel'] },
-                    { label: '结果', keys: ['result'] },
+                    { label: '层级', keys: ['approval_level', 'approvalLevel'], formatter: approvalLevelText },
+                    { label: '结果', keys: ['result'], formatter: approvalResultText },
                     { label: '意见', keys: ['opinion'] },
                   ]}
                 />
@@ -2740,17 +2814,17 @@ function TicketDetailPanel({
                   fields={[
                     { label: 'SKU', keys: ['skuCode', 'sku_code'] },
                     { label: '批次', keys: ['batchNo', 'batch_no'] },
-                    { label: '结果', keys: ['result'] },
-                    { label: '批次状态', keys: ['batchStatus', 'batch_status'] },
+                    { label: '结果', keys: ['result'], formatter: scanResultText },
+                    { label: '批次状态', keys: ['batchStatus', 'batch_status'], formatter: (value) => batchStatusText(value as ScanRecord['batchStatus']) },
                   ]}
                 />
                 <AuditList
                   title="赔付记录"
                   rows={detail.compensations}
                   fields={[
-                    { label: '方向', keys: ['direction'] },
-                    { label: '金额', keys: ['amount'] },
-                    { label: '状态', keys: ['status'] },
+                    { label: '方向', keys: ['direction'], formatter: compensationDirectionText },
+                    { label: '金额', keys: ['amount'], formatter: (value) => `¥${value}` },
+                    { label: '状态', keys: ['status'], formatter: compensationStatusText },
                     { label: '审批记录', keys: ['approval_record_id', 'approvalRecordId'] },
                   ]}
                 />
@@ -2758,7 +2832,7 @@ function TicketDetailPanel({
                   title="库存流水"
                   rows={detail.inventoryMovements}
                   fields={[
-                    { label: '类型', keys: ['movement_type', 'movementType'] },
+                    { label: '类型', keys: ['movement_type', 'movementType'], formatter: inventoryMovementText },
                     { label: '数量', keys: ['quantity_delta', 'quantityDelta'] },
                     { label: '备注', keys: ['remark'] },
                     { label: '审批记录', keys: ['approval_record_id', 'approvalRecordId'] },
@@ -2770,10 +2844,10 @@ function TicketDetailPanel({
                 title="事件日志"
                 rows={detail.events}
                 fields={[
-                  { label: '事件', keys: ['event_type', 'eventType'] },
+                  { label: '事件', keys: ['event_type', 'eventType'], formatter: ticketEventText },
                   { label: '操作者', keys: ['actor_id', 'actorId'] },
-                  { label: '明细', keys: ['detail'] },
-                  { label: '时间', keys: ['created_at', 'createdAt'] },
+                  { label: '明细', keys: ['detail'], formatter: eventDetailText },
+                  { label: '时间', keys: ['created_at', 'createdAt'], formatter: formatMetricTime },
                 ]}
               />
             </div>
@@ -2796,6 +2870,7 @@ function DetailMetric({ label, value }: { label: string; value: string | number 
 type AuditField = {
   label: string
   keys: string[]
+  formatter?: (value: string) => string
 }
 
 function AuditList({
@@ -2819,7 +2894,7 @@ function AuditList({
             {fields.map((field) => (
               <div key={field.label}>
                 <div className="text-xs text-gray-500">{field.label}</div>
-                <div className="mt-1 break-words font-medium text-gray-800">{recordValue(row, field.keys)}</div>
+                <div className="mt-1 break-words font-medium text-gray-800">{auditRecordValue(row, field)}</div>
               </div>
             ))}
           </div>
@@ -2827,6 +2902,12 @@ function AuditList({
       </div>
     </div>
   )
+}
+
+function auditRecordValue(row: Record<string, unknown>, field: AuditField) {
+  const value = recordValue(row, field.keys)
+  if (value === '-') return value
+  return field.formatter ? field.formatter(value) : value
 }
 
 function recordValue(row: Record<string, unknown>, keys: string[]) {

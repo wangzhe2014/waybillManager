@@ -24,16 +24,16 @@ test('builds display rows from approval and quality rules', () => {
     {
       id: 'amount-level-2',
       name: '大额二级审批',
-      condition: 'amount >= 1000',
-      action: 'level2_reviewing',
+      condition: '金额 >= 1000',
+      action: '二级审批',
       mode: 'approval',
       enabled: true,
     },
     {
       id: 'QR-DAMAGE-03',
       name: '外观破损暂扣',
-      condition: 'damage: damageLevel gte 3',
-      action: 'level2_reviewing + qc_hold',
+      condition: 'damage: 破损等级 >= 3',
+      action: '二级审批 + 品控暂扣',
       mode: 'quality',
       enabled: false,
     },
@@ -95,9 +95,9 @@ test('rejects invalid rule payloads', () => {
 
 test('filters and paginates rule rows for card display', () => {
   const rows = [
-    { id: 'amount-level-1', condition: '0 <= amount <= 999', action: 'level1_reviewing', mode: 'approval', enabled: true },
-    { id: 'amount-level-2', condition: 'amount >= 1000', action: 'level2_reviewing', mode: 'approval', enabled: true },
-    { id: 'QR-DAMAGE-03', name: '外观破损暂扣', condition: 'damageLevel gte 3', action: 'level2_reviewing + qc_hold', mode: 'quality', enabled: false },
+    { id: 'amount-level-1', condition: '0 <= 金额 <= 999', action: '一级审批', mode: 'approval', enabled: true },
+    { id: 'amount-level-2', condition: '金额 >= 1000', action: '二级审批', mode: 'approval', enabled: true },
+    { id: 'QR-DAMAGE-03', name: '外观破损暂扣', condition: '破损等级 >= 3', action: '二级审批 + 品控暂扣', mode: 'quality', enabled: false },
   ]
 
   const result = filterAndPaginateRuleRows(rows, {
@@ -113,9 +113,9 @@ test('filters and paginates rule rows for card display', () => {
 
 test('filters rule rows by type, name, code and status independently', () => {
   const rows = [
-    { id: 'amount-level-1', name: '小额一级审批', condition: '0 <= amount <= 999', action: 'level1_reviewing', mode: 'approval', enabled: true },
-    { id: 'amount-level-2', name: '大额二级审批', condition: 'amount >= 1000', action: 'level2_reviewing', mode: 'approval', enabled: false },
-    { id: 'QR-DAMAGE-03', name: '外观破损暂扣', condition: 'damageLevel gte 3', action: 'level2_reviewing + qc_hold', mode: 'quality', enabled: true },
+    { id: 'amount-level-1', name: '小额一级审批', condition: '0 <= 金额 <= 999', action: '一级审批', mode: 'approval', enabled: true },
+    { id: 'amount-level-2', name: '大额二级审批', condition: '金额 >= 1000', action: '二级审批', mode: 'approval', enabled: false },
+    { id: 'QR-DAMAGE-03', name: '外观破损暂扣', condition: '破损等级 >= 3', action: '二级审批 + 品控暂扣', mode: 'quality', enabled: true },
   ]
 
   const result = filterAndPaginateRuleRows(rows, {

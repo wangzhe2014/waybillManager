@@ -4,7 +4,7 @@ export function buildRuleRows(approvalRules = [], qualityRules = []) {
       id: String(rule.code),
       name: String(rule.name || rule.code),
       condition: amountCondition(rule),
-      action: String(rule.level),
+      action: approvalLevelText(rule.level),
       mode: 'approval',
       enabled: Boolean(rule.enabled),
     })),
@@ -12,7 +12,7 @@ export function buildRuleRows(approvalRules = [], qualityRules = []) {
       id: String(rule.code),
       name: String(rule.name || rule.subtype || rule.code),
       condition: qualityCondition(rule),
-      action: `${rule.entryLevel} + qc_hold`,
+      action: `${approvalLevelText(rule.entryLevel)} + 品控暂扣`,
       mode: 'quality',
       enabled: Boolean(rule.enabled),
     })),
@@ -115,9 +115,17 @@ function ruleSearchText(row) {
 function amountCondition(rule) {
   const min = Number(rule.minAmount || 0)
   if (rule.maxAmount === null || rule.maxAmount === undefined) {
-    return `amount >= ${min}`
+    return `金额 >= ${min}`
   }
-  return `${min} <= amount <= ${Number(rule.maxAmount)}`
+  return `${min} <= 金额 <= ${Number(rule.maxAmount)}`
+}
+
+function approvalLevelText(level) {
+  const labels = {
+    level1_reviewing: '一级审批',
+    level2_reviewing: '二级审批',
+  }
+  return labels[level] || String(level || '-')
 }
 
 function numberValue(value, fallback) {
@@ -146,5 +154,28 @@ function scalarValue(value) {
 
 function qualityCondition(rule) {
   const condition = rule.condition || {}
-  return `${rule.subtype}: ${condition.field || 'condition'} ${condition.operator || 'eq'} ${condition.value ?? ''}`.trim()
+  return `${rule.subtype}: ${conditionFieldText(condition.field)} ${conditionOperatorText(condition.operator)} ${condition.value ?? ''}`.trim()
+}
+
+function conditionFieldText(field) {
+  const labels = {
+    damageLevel: '破损等级',
+    quantityDiffRate: '数量差异率',
+    labelError: '标签错误',
+    batchException: '批次异常',
+    specMismatch: '规格不符',
+  }
+  return labels[field] || field || '条件'
+}
+
+function conditionOperatorText(operator) {
+  const labels = {
+    eq: '=',
+    gt: '>',
+    gte: '>=',
+    lt: '<',
+    lte: '<=',
+    includes: '包含',
+  }
+  return labels[operator] || operator || '='
 }

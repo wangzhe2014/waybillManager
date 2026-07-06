@@ -173,3 +173,66 @@
  ✓ Compiled /api/rules in 480ms (348 modules)
  GET /api/rules 200 in 1397ms
  GET /api/rules 200 in 472ms
+ ✓ Compiled in 2.6s (615 modules)
+ ✓ Compiled /api/tickets/[ticketId] in 428ms (331 modules)
+ GET /api/tickets/TQ-1783347817365-ad3386 200 in 2307ms
+ ✓ Compiled in 2.8s (519 modules)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET / 200 in 190ms
+ ✓ Compiled /api/scan-records in 167ms (336 modules)
+ ✓ Compiled (345 modules)
+ GET /api/inventory-movements?page=1&pageSize=10 200 in 1156ms
+ GET /api/integration-logs?page=1&pageSize=10 200 in 1173ms
+ GET /api/tickets 200 in 1288ms
+ GET /api/compensations?page=1&pageSize=10 200 in 1304ms
+ GET /api/scan-records?page=1&pageSize=5 200 in 1446ms
+ GET /api/tickets?page=1&pageSize=10 200 in 324ms
+ GET /api/scan-records?page=1&pageSize=10 200 in 1606ms
+ GET /api/inventory-movements?page=1&pageSize=10 200 in 450ms
+ GET /api/tickets 200 in 427ms
+ GET /api/compensations?page=1&pageSize=10 200 in 295ms
+ GET /api/integration-logs?page=1&pageSize=10 200 in 488ms
+ GET /api/scan-records?page=1&pageSize=5 200 in 814ms
+ GET /api/scan-records?page=1&pageSize=10 200 in 738ms
+ ✓ Compiled in 2.8s (612 modules)
+ ✓ Compiled in 2.9s (612 modules)
+ GET / 200 in 144ms
+ GET /api/tickets 200 in 725ms
+ GET /api/integration-logs?page=1&pageSize=10 200 in 802ms
+ GET /api/inventory-movements?page=1&pageSize=10 200 in 899ms
+ GET /api/compensations?page=1&pageSize=10 200 in 910ms
+ GET /api/tickets?page=1&pageSize=10 200 in 276ms
+ GET /api/scan-records?page=1&pageSize=5 200 in 1081ms
+ GET /api/tickets 200 in 308ms
+ GET /api/inventory-movements?page=1&pageSize=10 200 in 303ms
+ GET /api/scan-records?page=1&pageSize=10 200 in 1237ms
+ GET /api/integration-logs?page=1&pageSize=10 200 in 341ms
+ GET /api/compensations?page=1&pageSize=10 200 in 293ms
+ GET /api/scan-records?page=1&pageSize=5 200 in 551ms
+ GET /api/scan-records?page=1&pageSize=10 200 in 673ms
+ ○ Compiling /api/tickets/[ticketId] ...
+ ✓ Compiled /api/tickets/[ticketId] in 505ms (348 modules)
+ GET /api/tickets/TQ-1783347817365-ad3386 200 in 1251ms
+ GET /api/tickets/TL-1783347493805-c5775b 200 in 2153ms
+ ✓ Compiled in 1504ms (519 modules)
+ GET / 200 in 91ms
+ ✓ Compiled /api/inventory-movements in 166ms (336 modules)
+ ✓ Compiled (345 modules)
+ GET /api/compensations?page=1&pageSize=10 200 in 1224ms
+ GET /api/integration-logs?page=1&pageSize=10 200 in 1374ms
+ GET /api/inventory-movements?page=1&pageSize=10 200 in 1395ms
+ GET /api/tickets 200 in 1528ms
+ GET /api/tickets?page=1&pageSize=10 200 in 302ms
+ GET /api/scan-records?page=1&pageSize=10 200 in 1617ms
+ GET /api/scan-records?page=1&pageSize=5 200 in 1647ms
+ GET /api/compensations?page=1&pageSize=10 200 in 297ms
+ ✓ Compiled /api/rules in 463ms (348 modules)
+ GET /api/integration-logs?page=1&pageSize=10 200 in 935ms
+ GET /api/rules 200 in 1115ms
+ GET /api/tickets 200 in 1040ms
+ GET /api/scan-records?page=1&pageSize=5 200 in 1080ms
+ GET /api/rules 200 in 329ms
+ GET /api/inventory-movements?page=1&pageSize=10 200 in 1930ms
+ GET /api/scan-records?page=1&pageSize=10 200 in 1933ms
+ GET /api/rules 200 in 673ms
+ GET /api/rules 200 in 298ms
