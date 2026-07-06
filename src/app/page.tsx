@@ -25,7 +25,6 @@ import {
 import { statusText } from '@/lib/demo-data'
 import { getActorProfile, roleOptions } from '@/lib/core/role-service.mjs'
 import { buildMonitoringSummary } from '@/lib/core/monitoring-service.mjs'
-import { scheduledTaskConfigs } from '@/lib/core/scheduled-tasks.mjs'
 import { buildApprovalWorkbench, getTicketActionBlockReason } from '@/lib/core/action-permissions.mjs'
 import {
   countDueSoonTickets,
@@ -35,8 +34,7 @@ import {
 import { filterAndPaginateRuleRows } from '@/lib/core/rule-service.mjs'
 import type { ExceptionTicket, IntegrationLog, ScanRecord, TicketDetail } from '@/types'
 
-type TabKey = 'dashboard' | 'scan' | 'scanRecords' | 'tickets' | 'approvals' | 'compensations' | 'inventory' | 'rules' | 'scheduledTasks' | 'monitoring'
-type ScheduledTaskConfig = (typeof scheduledTaskConfigs)[number]
+type TabKey = 'dashboard' | 'scan' | 'scanRecords' | 'tickets' | 'approvals' | 'compensations' | 'inventory' | 'rules' | 'monitoring'
 type ScanFormState = {
   waybillNo: string
   skuCode: string
@@ -56,12 +54,6 @@ type MessageTone = 'success' | 'error' | 'info'
 type InlineMessage = {
   message: string
   tone: MessageTone
-}
-type ScheduledTaskRunResult = {
-  processed: number
-  trigger: string
-  authMode: string
-  executedAt: string
 }
 type ScanRecordFilters = {
   waybillNo: string
@@ -134,7 +126,6 @@ const tabs: { key: TabKey; label: string; icon: typeof Gauge }[] = [
   { key: 'compensations', label: '赔付记录', icon: CheckCircle2 },
   { key: 'inventory', label: '库存流水', icon: Boxes },
   { key: 'rules', label: '规则配置', icon: Settings2 },
-  { key: 'scheduledTasks', label: '定时任务', icon: Clock3 },
   { key: 'monitoring', label: '接口监控', icon: Activity },
 ]
 
@@ -148,7 +139,6 @@ const navigationTabs: { key: TabKey; label: string; icon: typeof Gauge }[] = tab
 const ticketListPageSize = 10
 const traceListPageSize = 10
 const logListPageSize = 10
-const scheduledTaskPageSize = 10
 const defaultTicketFilters = { status: 'all', waybillNo: '', exceptionType: '', approver: '' }
 const defaultLogFilters = { requestId: '', endpoint: '' }
 const defaultCompensationFilters = { keyword: '', direction: '', status: '' }
@@ -239,9 +229,6 @@ export default function Home() {
   const [logsLoading, setLogsLoading] = useState(true)
   const [compensationsLoading, setCompensationsLoading] = useState(true)
   const [inventoryLoading, setInventoryLoading] = useState(true)
-  const [runningScheduledTaskId, setRunningScheduledTaskId] = useState('')
-  const [scheduledTaskResults, setScheduledTaskResults] = useState<Record<string, ScheduledTaskRunResult>>({})
-  const [scheduledTaskPage, setScheduledTaskPage] = useState(1)
   const [toast, setToast] = useState<InlineMessage | null>(null)
   const [scanAlert, setScanAlert] = useState<InlineMessage | null>(null)
   const [ticketAlert, setTicketAlert] = useState<InlineMessage | null>(null)
@@ -436,40 +423,6 @@ export default function Home() {
     } finally {
       setLogsLoading(false)
     }
-  }
-
-  const handleRunScheduledTask = async (task: ScheduledTaskConfig) => {
-    setRunningScheduledTaskId(task.id)
-    try {
-      const response = await fetch(task.path, { method: task.manualMethod })
-      const data = await response.json()
-      if (!response.ok || data.error) throw new Error(data.error || `${task.name}执行失败`)
-      setScheduledTaskResults((current) => ({
-        ...current,
-        [task.id]: {
-          processed: Number(data.processed || 0),
-          trigger: String(data.trigger || 'manual'),
-          authMode: String(data.authMode || '-'),
-          executedAt: String(data.executedAt || new Date().toISOString()),
-        },
-      }))
-      notifySuccess(`${task.name}执行完成，处理 ${Number(data.processed || 0)} 条`)
-      refreshTickets()
-      refreshTicketList()
-      refreshLogs()
-    } catch (error) {
-      notifyError(error instanceof Error ? error.message : `${task.name}执行失败`)
-    } finally {
-      setRunningScheduledTaskId('')
-    }
-  }
-
-  const handleViewScheduledTaskLogs = (task: ScheduledTaskConfig) => {
-    setLogRequestIdFilter('')
-    setLogEndpointFilter(task.path)
-    setLogPage(1)
-    setAppliedLogFilters({ requestId: '', endpoint: task.path })
-    setActiveTab('monitoring')
   }
 
   const refreshCompensations = async (page = compensationPage) => {
@@ -998,18 +951,6 @@ export default function Home() {
             />
           )}
           {activeTab === 'rules' && <RulesPanel />}
-          {activeTab === 'scheduledTasks' && (
-            <ScheduledTasksPanel
-              tasks={scheduledTaskConfigs}
-              results={scheduledTaskResults}
-              runningTaskId={runningScheduledTaskId}
-              page={scheduledTaskPage}
-              pageSize={scheduledTaskPageSize}
-              onPageChange={setScheduledTaskPage}
-              onRunTask={handleRunScheduledTask}
-              onViewLogs={handleViewScheduledTaskLogs}
-            />
-          )}
           {activeTab === 'monitoring' && (
             <MonitoringPanel
               logRows={logRows}
@@ -2463,98 +2404,6 @@ function RulesPanel() {
           </div>
         </div>
       )}
-    </section>
-  )
-}
-
-function ScheduledTasksPanel({
-  tasks,
-  results,
-  runningTaskId,
-  page,
-  pageSize,
-  onPageChange,
-  onRunTask,
-  onViewLogs,
-}: {
-  tasks: ScheduledTaskConfig[]
-  results: Record<string, ScheduledTaskRunResult>
-  runningTaskId: string
-  page: number
-  pageSize: number
-  onPageChange: (page: number) => void
-  onRunTask: (task: ScheduledTaskConfig) => void
-  onViewLogs: (task: ScheduledTaskConfig) => void
-}) {
-  const total = tasks.length
-  const totalPages = Math.max(1, Math.ceil(total / pageSize))
-  const currentPage = Math.min(page, totalPages)
-  const start = (currentPage - 1) * pageSize
-  const pageRows = tasks.slice(start, start + pageSize)
-  const pageInfo = { total, page: currentPage, pageSize, totalPages }
-
-  return (
-    <section className="jt-card overflow-hidden">
-      <SectionTitle icon={Clock3} title="定时任务" description="集中管理后台任务，可手动执行并跳转查看对应接口日志。" />
-      <div className="overflow-x-auto scrollbar-thin">
-        <table className="w-full min-w-[1080px] text-sm">
-          <thead className="bg-gray-50 text-left text-gray-500">
-            <tr>
-              <th className="px-5 py-4">任务</th>
-              <th className="px-5 py-4">频率</th>
-              <th className="px-5 py-4">接口</th>
-              <th className="px-5 py-4">最近手动执行</th>
-              <th className="px-5 py-4">结果</th>
-              <th className="px-5 py-4 text-right">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pageRows.map((task) => {
-              const result = results[task.id]
-              const running = runningTaskId === task.id
-              return (
-                <tr key={task.id} className="border-t border-gray-100">
-                  <td className="px-5 py-4">
-                    <div className="font-semibold text-gray-900">{task.name}</div>
-                    <div className="mt-1 text-xs text-gray-500">{task.category} · {task.description}</div>
-                  </td>
-                  <td className="px-5 py-4">
-                    <div>{task.scheduleText}</div>
-                    <div className="mt-1 font-mono text-xs text-gray-500">{task.schedule}</div>
-                  </td>
-                  <td className="px-5 py-4 font-mono text-xs text-gray-600">{task.path}</td>
-                  <td className="px-5 py-4">{result ? formatMetricTime(result.executedAt) : '-'}</td>
-                  <td className="px-5 py-4">
-                    {result ? (
-                      <span>处理 {result.processed} 条 · {result.trigger} · {result.authMode}</span>
-                    ) : (
-                      <span className="text-gray-400">暂无手动执行记录</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-4">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => onViewLogs(task)}
-                        className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-                      >
-                        查看日志
-                      </button>
-                      <button
-                        onClick={() => onRunTask(task)}
-                        disabled={!task.enabled || running}
-                        className="jt-btn-primary h-9 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {running ? '执行中...' : '立即执行'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-      <TracePagination pageInfo={pageInfo} loading={Boolean(runningTaskId)} onPageChange={onPageChange} />
     </section>
   )
 }

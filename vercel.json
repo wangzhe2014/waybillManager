@@ -1,11 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "outputDirectory": null,
-  "crons": [
-    {
-      "path": "/api/timeouts/process",
-      "schedule": "*/5 * * * *"
-    }
-  ]
+  "outputDirectory": null
 }
