@@ -53,6 +53,8 @@ export interface ScanRecord {
   result: 'passed' | 'abnormal'
   batchStatus: 'available' | 'qc_hold' | 'qc_released' | 'returned_supplier' | 'repurchasing' | 'downgraded'
   ticketId?: string
+  ticketNo?: string
+  ticketExceptionType?: string
   matchedRuleId?: string
   abnormalDescription?: string
   scannedAt: string

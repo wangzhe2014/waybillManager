@@ -134,7 +134,7 @@ export function createSupabaseStore(client) {
       const { page, pageSize, from, to } = paginationRange(options)
       const { data, error, count } = await client
         .from('scan_records')
-        .select('*', { count: 'exact' })
+        .select('*, exception_tickets(ticket_no, exception_type)', { count: 'exact' })
         .order('scanned_at', { ascending: false })
         .range(from, to)
       if (error) throw error
@@ -573,6 +573,7 @@ export function mapScanToRow(scan) {
 }
 
 export function mapRowToScan(row) {
+  const ticket = row.exception_tickets || {}
   return {
     id: row.id,
     waybillNo: row.waybill_no,
@@ -583,6 +584,8 @@ export function mapRowToScan(row) {
     result: row.result,
     batchStatus: row.batch_status,
     ticketId: row.ticket_id || undefined,
+    ticketNo: ticket.ticket_no || undefined,
+    ticketExceptionType: ticket.exception_type || undefined,
     matchedRuleId: row.matched_rule_id || undefined,
     abnormalDescription: row.abnormal_description || undefined,
     scannedAt: row.scanned_at,

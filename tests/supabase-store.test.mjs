@@ -217,6 +217,7 @@ test('lists scan records with pagination ordered by latest scan time', async () 
               result: 'passed',
               batch_status: 'available',
               ticket_id: null,
+              exception_tickets: null,
               matched_rule_id: null,
               abnormal_description: null,
               scanned_at: '2026-07-05T10:00:00.000Z',
@@ -232,7 +233,7 @@ test('lists scan records with pagination ordered by latest scan time', async () 
   const result = await createSupabaseStore(fakeClient).listScanRecords({ page: 2, pageSize: 10 })
 
   assert.deepEqual(calls, [
-    { method: 'select', columns: '*', options: { count: 'exact' } },
+    { method: 'select', columns: '*, exception_tickets(ticket_no, exception_type)', options: { count: 'exact' } },
     { method: 'order', column: 'scanned_at', options: { ascending: false } },
     { method: 'range', from: 10, to: 19 },
   ])
@@ -240,6 +241,47 @@ test('lists scan records with pagination ordered by latest scan time', async () 
   assert.equal(result.scans[0].batchStatus, 'available')
   assert.equal(result.total, 21)
   assert.equal(result.totalPages, 3)
+})
+
+test('listScanRecords exposes business ticket number for scan list display', async () => {
+  const fakeClient = {
+    from() {
+      return {
+        select() { return this },
+        order() { return this },
+        range() { return this },
+        then(resolve) {
+          resolve({
+            data: [{
+              id: 'SCAN-003',
+              waybill_no: 'PS2512220005003',
+              sku_code: 'SKU-3',
+              batch_no: 'BATCH-3',
+              operator_id: 'scanner',
+              result: 'abnormal',
+              batch_status: 'qc_hold',
+              ticket_id: '11111111-1111-4111-8111-111111111111',
+              exception_tickets: {
+                ticket_no: 'TQ-001',
+                exception_type: '外观破损',
+              },
+              matched_rule_id: null,
+              abnormal_description: null,
+              scanned_at: '2026-07-05T10:00:00.000Z',
+            }],
+            count: 1,
+            error: null,
+          })
+        },
+      }
+    },
+  }
+
+  const result = await createSupabaseStore(fakeClient).listScanRecords({ page: 1, pageSize: 10 })
+
+  assert.equal(result.scans[0].ticketId, '11111111-1111-4111-8111-111111111111')
+  assert.equal(result.scans[0].ticketNo, 'TQ-001')
+  assert.equal(result.scans[0].ticketExceptionType, '外观破损')
 })
 
 test('locks inventory batch by resolving business ticket number', async () => {

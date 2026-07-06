@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { KeyboardEvent, ReactNode } from 'react'
 import {
   Activity,
   AlertTriangle,
@@ -35,7 +35,7 @@ import {
 import { filterAndPaginateRuleRows } from '@/lib/core/rule-service.mjs'
 import type { ExceptionTicket, IntegrationLog, ScanRecord, TicketDetail } from '@/types'
 
-type TabKey = 'dashboard' | 'scan' | 'tickets' | 'approvals' | 'compensations' | 'inventory' | 'rules' | 'scheduledTasks' | 'monitoring'
+type TabKey = 'dashboard' | 'scan' | 'scanRecords' | 'tickets' | 'approvals' | 'compensations' | 'inventory' | 'rules' | 'scheduledTasks' | 'monitoring'
 type ScheduledTaskConfig = (typeof scheduledTaskConfigs)[number]
 type ScanFormState = {
   waybillNo: string
@@ -62,6 +62,14 @@ type ScheduledTaskRunResult = {
   trigger: string
   authMode: string
   executedAt: string
+}
+type ScanRecordFilters = {
+  waybillNo: string
+  skuCode: string
+  batchNo: string
+  result: string
+  batchStatus: string
+  ticketNo: string
 }
 const ticketStatusOptions = [
   { value: 'all', label: '全部状态' },
@@ -131,10 +139,29 @@ const tabs: { key: TabKey; label: string; icon: typeof Gauge }[] = [
 ]
 
 const exceptionTypeOptions = ['丢件', '破损', '客户拒收', '超时未签收', '地址错误']
+const navigationTabs: { key: TabKey; label: string; icon: typeof Gauge }[] = tabs.flatMap((tab) =>
+  tab.key === 'scan'
+    ? [tab, { key: 'scanRecords', label: '扫描记录', icon: ListFilter }]
+    : [tab]
+)
+
 const ticketListPageSize = 10
 const traceListPageSize = 10
 const logListPageSize = 10
 const scheduledTaskPageSize = 10
+const defaultTicketFilters = { status: 'all', waybillNo: '', exceptionType: '', approver: '' }
+const defaultLogFilters = { requestId: '', endpoint: '' }
+const defaultCompensationFilters = { keyword: '', direction: '', status: '' }
+const defaultInventoryFilters = { keyword: '', movementType: '' }
+const defaultRuleFilters = { mode: 'all', name: '', code: '', status: 'all' }
+const defaultScanRecordFilters: ScanRecordFilters = {
+  waybillNo: '',
+  skuCode: '',
+  batchNo: '',
+  result: '',
+  batchStatus: '',
+  ticketNo: '',
+}
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabKey>('dashboard')
@@ -143,6 +170,7 @@ export default function Home() {
   const [waybillFilter, setWaybillFilter] = useState('')
   const [exceptionTypeFilter, setExceptionTypeFilter] = useState('')
   const [approverFilter, setApproverFilter] = useState('')
+  const [appliedTicketFilters, setAppliedTicketFilters] = useState(defaultTicketFilters)
   const [ticketPage, setTicketPage] = useState(1)
   const [ticketPageInfo, setTicketPageInfo] = useState({
     total: 0,
@@ -153,10 +181,12 @@ export default function Home() {
   const [ticketRows, setTicketRows] = useState<ExceptionTicket[]>([])
   const [ticketListRows, setTicketListRows] = useState<ExceptionTicket[]>([])
   const [scanRows, setScanRows] = useState<DisplayScanRecord[]>([])
+  const [scanRecordRows, setScanRecordRows] = useState<DisplayScanRecord[]>([])
   const [logRows, setLogRows] = useState<IntegrationLog[]>([])
   const [logPage, setLogPage] = useState(1)
   const [logRequestIdFilter, setLogRequestIdFilter] = useState('')
   const [logEndpointFilter, setLogEndpointFilter] = useState('')
+  const [appliedLogFilters, setAppliedLogFilters] = useState(defaultLogFilters)
   const [logPageInfo, setLogPageInfo] = useState({
     total: 0,
     page: 1,
@@ -182,8 +212,10 @@ export default function Home() {
   const [compensationKeyword, setCompensationKeyword] = useState('')
   const [compensationDirection, setCompensationDirection] = useState('')
   const [compensationStatus, setCompensationStatus] = useState('')
+  const [appliedCompensationFilters, setAppliedCompensationFilters] = useState(defaultCompensationFilters)
   const [inventoryKeyword, setInventoryKeyword] = useState('')
   const [inventoryMovementType, setInventoryMovementType] = useState('')
+  const [appliedInventoryFilters, setAppliedInventoryFilters] = useState(defaultInventoryFilters)
   const [scanPage, setScanPage] = useState(1)
   const [scanPageInfo, setScanPageInfo] = useState({
     total: 0,
@@ -191,9 +223,19 @@ export default function Home() {
     pageSize: 5,
     totalPages: 1,
   })
+  const [scanRecordPage, setScanRecordPage] = useState(1)
+  const [scanRecordFilters, setScanRecordFilters] = useState<ScanRecordFilters>(defaultScanRecordFilters)
+  const [appliedScanRecordFilters, setAppliedScanRecordFilters] = useState<ScanRecordFilters>(defaultScanRecordFilters)
+  const [scanRecordPageInfo, setScanRecordPageInfo] = useState({
+    total: 0,
+    page: 1,
+    pageSize: 10,
+    totalPages: 1,
+  })
   const [ticketsLoading, setTicketsLoading] = useState(true)
   const [ticketListLoading, setTicketListLoading] = useState(true)
   const [scanLoading, setScanLoading] = useState(true)
+  const [scanRecordLoading, setScanRecordLoading] = useState(true)
   const [logsLoading, setLogsLoading] = useState(true)
   const [compensationsLoading, setCompensationsLoading] = useState(true)
   const [inventoryLoading, setInventoryLoading] = useState(true)
@@ -234,31 +276,32 @@ export default function Home() {
 
   useEffect(() => {
     refreshLogs(logPage)
-  }, [logPage, logRequestIdFilter, logEndpointFilter])
+  }, [logPage, appliedLogFilters])
 
   useEffect(() => {
     refreshScanRecords(scanPage)
   }, [scanPage])
 
   useEffect(() => {
+    refreshAllScanRecords(scanRecordPage)
+  }, [scanRecordPage, appliedScanRecordFilters])
+
+  useEffect(() => {
     refreshCompensations(compensationPage)
-  }, [compensationPage, compensationKeyword, compensationDirection, compensationStatus])
+  }, [compensationPage, appliedCompensationFilters])
 
   useEffect(() => {
     refreshInventoryMovements(inventoryPage)
-  }, [inventoryPage, inventoryKeyword, inventoryMovementType])
+  }, [inventoryPage, appliedInventoryFilters])
 
   useEffect(() => {
     const controller = new AbortController()
-    const timer = window.setTimeout(() => {
-      refreshTicketList(controller.signal)
-    }, 250)
+    refreshTicketList(controller.signal)
 
     return () => {
       controller.abort()
-      window.clearTimeout(timer)
     }
-  }, [statusFilter, waybillFilter, exceptionTypeFilter, approverFilter, ticketPage])
+  }, [ticketPage, appliedTicketFilters])
 
   const filteredTickets = useMemo(() => {
     return ticketListRows
@@ -287,10 +330,10 @@ export default function Home() {
       page: String(ticketPage),
       pageSize: String(ticketListPageSize),
     })
-    if (statusFilter !== 'all') params.set('status', statusFilter)
-    if (waybillFilter.trim()) params.set('waybillNo', waybillFilter.trim())
-    if (exceptionTypeFilter.trim()) params.set('exceptionType', exceptionTypeFilter.trim())
-    if (approverFilter.trim()) params.set('approver', approverFilter.trim())
+    if (appliedTicketFilters.status !== 'all') params.set('status', appliedTicketFilters.status)
+    if (appliedTicketFilters.waybillNo.trim()) params.set('waybillNo', appliedTicketFilters.waybillNo.trim())
+    if (appliedTicketFilters.exceptionType.trim()) params.set('exceptionType', appliedTicketFilters.exceptionType.trim())
+    if (appliedTicketFilters.approver.trim()) params.set('approver', appliedTicketFilters.approver.trim())
 
     setTicketListLoading(true)
     try {
@@ -338,6 +381,37 @@ export default function Home() {
     }
   }
 
+  const refreshAllScanRecords = async (page = scanRecordPage) => {
+    setScanRecordLoading(true)
+    try {
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(scanRecordPageInfo.pageSize),
+      })
+      if (appliedScanRecordFilters.waybillNo.trim()) params.set('waybillNo', appliedScanRecordFilters.waybillNo.trim())
+      if (appliedScanRecordFilters.skuCode.trim()) params.set('skuCode', appliedScanRecordFilters.skuCode.trim())
+      if (appliedScanRecordFilters.batchNo.trim()) params.set('batchNo', appliedScanRecordFilters.batchNo.trim())
+      if (appliedScanRecordFilters.result) params.set('result', appliedScanRecordFilters.result)
+      if (appliedScanRecordFilters.batchStatus) params.set('batchStatus', appliedScanRecordFilters.batchStatus)
+      if (appliedScanRecordFilters.ticketNo.trim()) params.set('ticketNo', appliedScanRecordFilters.ticketNo.trim())
+
+      const response = await fetch(`/api/scan-records?${params.toString()}`)
+      const data = await response.json()
+      if (!response.ok || data.error) throw new Error(data.error || '扫描记录加载失败')
+      setScanRecordRows(Array.isArray(data.scans) ? data.scans : [])
+      setScanRecordPageInfo({
+        total: Number(data.total || 0),
+        page: Number(data.page || page),
+        pageSize: Number(data.pageSize || scanRecordPageInfo.pageSize),
+        totalPages: Number(data.totalPages || 1),
+      })
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : '扫描记录加载失败')
+    } finally {
+      setScanRecordLoading(false)
+    }
+  }
+
   const refreshLogs = async (page = logPage) => {
     setLogsLoading(true)
     try {
@@ -345,8 +419,8 @@ export default function Home() {
         page: String(page),
         pageSize: String(logListPageSize),
       })
-      if (logRequestIdFilter.trim()) params.set('requestId', logRequestIdFilter.trim())
-      if (logEndpointFilter.trim()) params.set('endpoint', logEndpointFilter.trim())
+      if (appliedLogFilters.requestId.trim()) params.set('requestId', appliedLogFilters.requestId.trim())
+      if (appliedLogFilters.endpoint.trim()) params.set('endpoint', appliedLogFilters.endpoint.trim())
       const response = await fetch(`/api/integration-logs?${params.toString()}`)
       const data = await response.json()
       if (!response.ok || data.error) throw new Error(data.error || '接口日志加载失败')
@@ -394,6 +468,7 @@ export default function Home() {
     setLogRequestIdFilter('')
     setLogEndpointFilter(task.path)
     setLogPage(1)
+    setAppliedLogFilters({ requestId: '', endpoint: task.path })
     setActiveTab('monitoring')
   }
 
@@ -404,9 +479,9 @@ export default function Home() {
         page: String(page),
         pageSize: String(traceListPageSize),
       })
-      if (compensationKeyword.trim()) params.set('keyword', compensationKeyword.trim())
-      if (compensationDirection) params.set('direction', compensationDirection)
-      if (compensationStatus) params.set('status', compensationStatus)
+      if (appliedCompensationFilters.keyword.trim()) params.set('keyword', appliedCompensationFilters.keyword.trim())
+      if (appliedCompensationFilters.direction) params.set('direction', appliedCompensationFilters.direction)
+      if (appliedCompensationFilters.status) params.set('status', appliedCompensationFilters.status)
       const response = await fetch(`/api/compensations?${params.toString()}`)
       const data = await response.json()
       if (!response.ok || data.error) throw new Error(data.error || '赔付记录加载失败')
@@ -431,8 +506,8 @@ export default function Home() {
         page: String(page),
         pageSize: String(traceListPageSize),
       })
-      if (inventoryKeyword.trim()) params.set('keyword', inventoryKeyword.trim())
-      if (inventoryMovementType) params.set('movementType', inventoryMovementType)
+      if (appliedInventoryFilters.keyword.trim()) params.set('keyword', appliedInventoryFilters.keyword.trim())
+      if (appliedInventoryFilters.movementType) params.set('movementType', appliedInventoryFilters.movementType)
       const response = await fetch(`/api/inventory-movements?${params.toString()}`)
       const data = await response.json()
       if (!response.ok || data.error) throw new Error(data.error || '库存流水加载失败')
@@ -448,6 +523,87 @@ export default function Home() {
     } finally {
       setInventoryLoading(false)
     }
+  }
+
+  const handleTicketSearch = () => {
+    setTicketPage(1)
+    setAppliedTicketFilters({
+      status: statusFilter,
+      waybillNo: waybillFilter,
+      exceptionType: exceptionTypeFilter,
+      approver: approverFilter,
+    })
+  }
+
+  const handleTicketReset = () => {
+    setStatusFilter(defaultTicketFilters.status)
+    setWaybillFilter(defaultTicketFilters.waybillNo)
+    setExceptionTypeFilter(defaultTicketFilters.exceptionType)
+    setApproverFilter(defaultTicketFilters.approver)
+    setTicketPage(1)
+    setAppliedTicketFilters(defaultTicketFilters)
+  }
+
+  const handleCompensationSearch = () => {
+    setCompensationPage(1)
+    setAppliedCompensationFilters({
+      keyword: compensationKeyword,
+      direction: compensationDirection,
+      status: compensationStatus,
+    })
+  }
+
+  const handleCompensationReset = () => {
+    setCompensationKeyword(defaultCompensationFilters.keyword)
+    setCompensationDirection(defaultCompensationFilters.direction)
+    setCompensationStatus(defaultCompensationFilters.status)
+    setCompensationPage(1)
+    setAppliedCompensationFilters(defaultCompensationFilters)
+  }
+
+  const handleInventorySearch = () => {
+    setInventoryPage(1)
+    setAppliedInventoryFilters({
+      keyword: inventoryKeyword,
+      movementType: inventoryMovementType,
+    })
+  }
+
+  const handleInventoryReset = () => {
+    setInventoryKeyword(defaultInventoryFilters.keyword)
+    setInventoryMovementType(defaultInventoryFilters.movementType)
+    setInventoryPage(1)
+    setAppliedInventoryFilters(defaultInventoryFilters)
+  }
+
+  const handleLogSearch = () => {
+    setLogPage(1)
+    setAppliedLogFilters({
+      requestId: logRequestIdFilter,
+      endpoint: logEndpointFilter,
+    })
+  }
+
+  const handleLogReset = () => {
+    setLogRequestIdFilter(defaultLogFilters.requestId)
+    setLogEndpointFilter(defaultLogFilters.endpoint)
+    setLogPage(1)
+    setAppliedLogFilters(defaultLogFilters)
+  }
+
+  const updateScanRecordFilter = (field: keyof ScanRecordFilters, value: string) => {
+    setScanRecordFilters((current) => ({ ...current, [field]: value }))
+  }
+
+  const handleScanRecordSearch = () => {
+    setScanRecordPage(1)
+    setAppliedScanRecordFilters(scanRecordFilters)
+  }
+
+  const handleScanRecordReset = () => {
+    setScanRecordFilters(defaultScanRecordFilters)
+    setScanRecordPage(1)
+    setAppliedScanRecordFilters(defaultScanRecordFilters)
   }
 
   const handleSelectTicket = async (ticketId: string) => {
@@ -484,7 +640,7 @@ export default function Home() {
           waybillNo: scanForm.waybillNo,
           skuCode: scanForm.skuCode,
           batchNo: scanForm.batchNo,
-          operator: scanForm.operator,
+          operator: scanForm.operator || currentActor.label || currentActor.actorId,
           abnormalDescription: scanForm.abnormalDescription,
           damageLevel: Number(scanForm.damageLevel || 0),
         }),
@@ -499,6 +655,8 @@ export default function Home() {
       await refreshTicketList()
       setScanPage(1)
       await refreshScanRecords(1)
+      setScanRecordPage(1)
+      await refreshAllScanRecords(1)
       await refreshLogs()
       const message = data.message || '扫描检测完成'
       setScanAlert({ message, tone: 'success' })
@@ -691,7 +849,7 @@ export default function Home() {
       <div className="mx-auto grid max-w-[1720px] gap-7 px-6 py-7 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)] xl:px-10 2xl:px-12">
         <aside className="jt-card h-fit p-4">
           <nav className="space-y-2">
-            {tabs.map((tab) => {
+            {navigationTabs.map((tab) => {
               const Icon = tab.icon
               const active = activeTab === tab.key
               return (
@@ -738,11 +896,25 @@ export default function Home() {
               pageInfo={scanPageInfo}
               onPageChange={setScanPage}
               scanForm={scanForm}
+              currentActorName={currentActor.label || currentActor.actorId}
               onScanFormChange={(next) => {
                 setScanForm(next)
                 if (scanAlert?.tone === 'error') setScanAlert(null)
               }}
               onCreateQualityScan={handleCreateQualityScan}
+              onViewAllScanRecords={() => setActiveTab('scanRecords')}
+            />
+          )}
+          {activeTab === 'scanRecords' && (
+            <ScanRecordsPanel
+              rows={scanRecordRows}
+              loading={scanRecordLoading}
+              pageInfo={scanRecordPageInfo}
+              filters={scanRecordFilters}
+              onFilterChange={updateScanRecordFilter}
+              onSearch={handleScanRecordSearch}
+              onResetFilters={handleScanRecordReset}
+              onPageChange={setScanRecordPage}
             />
           )}
           {activeTab === 'tickets' && (
@@ -770,6 +942,8 @@ export default function Home() {
               onWaybillFilterChange={setWaybillFilter}
               onExceptionTypeFilterChange={setExceptionTypeFilter}
               onApproverFilterChange={setApproverFilter}
+              onSearch={handleTicketSearch}
+              onResetFilters={handleTicketReset}
               ticketPageInfo={ticketPageInfo}
               loading={ticketListLoading}
               onTicketPageChange={setTicketPage}
@@ -801,18 +975,11 @@ export default function Home() {
               keyword={compensationKeyword}
               direction={compensationDirection}
               status={compensationStatus}
-              onKeywordChange={(value) => {
-                setCompensationPage(1)
-                setCompensationKeyword(value)
-              }}
-              onDirectionChange={(value) => {
-                setCompensationPage(1)
-                setCompensationDirection(value)
-              }}
-              onStatusChange={(value) => {
-                setCompensationPage(1)
-                setCompensationStatus(value)
-              }}
+              onKeywordChange={setCompensationKeyword}
+              onDirectionChange={setCompensationDirection}
+              onStatusChange={setCompensationStatus}
+              onSearch={handleCompensationSearch}
+              onResetFilters={handleCompensationReset}
               onPageChange={setCompensationPage}
             />
           )}
@@ -823,14 +990,10 @@ export default function Home() {
               pageInfo={inventoryPageInfo}
               keyword={inventoryKeyword}
               movementType={inventoryMovementType}
-              onKeywordChange={(value) => {
-                setInventoryPage(1)
-                setInventoryKeyword(value)
-              }}
-              onMovementTypeChange={(value) => {
-                setInventoryPage(1)
-                setInventoryMovementType(value)
-              }}
+              onKeywordChange={setInventoryKeyword}
+              onMovementTypeChange={setInventoryMovementType}
+              onSearch={handleInventorySearch}
+              onResetFilters={handleInventoryReset}
               onPageChange={setInventoryPage}
             />
           )}
@@ -855,19 +1018,10 @@ export default function Home() {
               pageInfo={logPageInfo}
               requestIdFilter={logRequestIdFilter}
               endpointFilter={logEndpointFilter}
-              onRequestIdFilterChange={(value) => {
-                setLogPage(1)
-                setLogRequestIdFilter(value)
-              }}
-              onEndpointFilterChange={(value) => {
-                setLogPage(1)
-                setLogEndpointFilter(value)
-              }}
-              onResetFilters={() => {
-                setLogPage(1)
-                setLogRequestIdFilter('')
-                setLogEndpointFilter('')
-              }}
+              onRequestIdFilterChange={setLogRequestIdFilter}
+              onEndpointFilterChange={setLogEndpointFilter}
+              onSearch={handleLogSearch}
+              onResetFilters={handleLogReset}
               onPageChange={setLogPage}
             />
           )}
@@ -950,8 +1104,10 @@ function ScanPanel({
   pageInfo,
   onPageChange,
   scanForm,
+  currentActorName,
   onScanFormChange,
   onCreateQualityScan,
+  onViewAllScanRecords,
 }: {
   scanRows: DisplayScanRecord[]
   loading: boolean
@@ -964,8 +1120,10 @@ function ScanPanel({
   }
   onPageChange: (page: number) => void
   scanForm: ScanFormState
+  currentActorName: string
   onScanFormChange: (next: ScanFormState) => void
   onCreateQualityScan: () => void
+  onViewAllScanRecords: () => void
 }) {
   const updateField = (field: keyof ScanFormState, value: string) => {
     onScanFormChange({ ...scanForm, [field]: value })
@@ -989,7 +1147,30 @@ function ScanPanel({
           <input className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" value={scanForm.skuCode} onChange={(event) => updateField('skuCode', event.target.value)} />
           <RequiredLabel className="mt-4">批次号</RequiredLabel>
           <input className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" value={scanForm.batchNo} onChange={(event) => updateField('batchNo', event.target.value)} />
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="mt-4 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700">
+            <span className="text-gray-500">操作人</span>
+            <span className="ml-3 font-semibold text-gray-900">{currentActorName || '当前用户'}</span>
+          </div>
+          <details className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
+            <summary className="cursor-pointer text-sm font-semibold text-gray-700">异常补充信息（可选）</summary>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <div>
+                <label className="text-sm font-medium text-gray-700">破损等级</label>
+                <select className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" value={scanForm.damageLevel || '0'} onChange={(event) => updateField('damageLevel', event.target.value)}>
+                  <option value="0">无明显破损</option>
+                  <option value="1">轻微破损</option>
+                  <option value="2">中度破损</option>
+                  <option value="3">严重破损</option>
+                  <option value="4">无法正常履约</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">异常备注</label>
+                <textarea className="mt-2 h-24 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" placeholder="可补充破损位置、照片编号、现场说明等" value={scanForm.abnormalDescription} onChange={(event) => updateField('abnormalDescription', event.target.value)} />
+              </div>
+            </div>
+          </details>
+          <div className="hidden">
             <div>
               <label className="text-sm font-medium text-gray-700">操作人</label>
               <input className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" value={scanForm.operator} onChange={(event) => updateField('operator', event.target.value)} />
@@ -999,8 +1180,8 @@ function ScanPanel({
               <input type="number" min="0" max="5" className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" value={scanForm.damageLevel} onChange={(event) => updateField('damageLevel', event.target.value)} />
             </div>
           </div>
-          <label className="mt-4 block text-sm font-medium text-gray-700">品控描述</label>
-          <textarea className="mt-2 h-24 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" value={scanForm.abnormalDescription} onChange={(event) => updateField('abnormalDescription', event.target.value)} />
+          <label className="hidden">品控描述</label>
+          <textarea className="hidden" value={scanForm.abnormalDescription} onChange={(event) => updateField('abnormalDescription', event.target.value)} />
           <button onClick={onCreateQualityScan} className="jt-btn-primary mt-4 h-10 w-full">
             <ScanLine className="h-4 w-4" />
             执行扫描检测
@@ -1010,6 +1191,15 @@ function ScanPanel({
           </p>
         </div>
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+          <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">最近扫描结果</h3>
+              <p className="mt-1 text-xs text-gray-500">只展示最近记录，用于确认本次扫描反馈。</p>
+            </div>
+            <button onClick={onViewAllScanRecords} className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50">
+              查看全部
+            </button>
+          </div>
           <div className="overflow-x-auto scrollbar-thin">
             <table className="w-full min-w-[760px] text-sm">
               <thead className="bg-gray-50 text-left text-gray-500">
@@ -1035,13 +1225,16 @@ function ScanPanel({
                     <td className="px-5 py-4">{record.waybillNo}<br /><span className="text-gray-500">{record.skuCode} · {record.skuName}</span></td>
                     <td className="px-5 py-4"><Badge tone={record.batchStatus === 'qc_hold' ? 'orange' : 'green'}>{batchStatusText(record.batchStatus)}</Badge></td>
                     <td className="px-5 py-4">{record.matchedRuleName || '-'}</td>
-                    <td className="px-5 py-4">{record.ticketId || '-'}</td>
+                    <td className="px-5 py-4">{record.ticketNo || record.ticketId || '-'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div className="flex flex-col gap-3 border-t border-gray-100 px-5 py-4 text-sm text-gray-600 md:flex-row md:items-center md:justify-between">
+          <div className="border-t border-gray-100 px-5 py-4 text-sm text-gray-600">
+            共 {pageInfo.total} 条，当前显示最近 {scanRows.length} 条
+          </div>
+          <div className="hidden">
             <span>共 {pageInfo.total} 条，第 {pageInfo.page} / {pageInfo.totalPages} 页</span>
             <div className="flex gap-2">
               <button
@@ -1080,6 +1273,101 @@ function ScanPanel({
   )
 }
 
+function ScanRecordsPanel({
+  rows,
+  loading,
+  pageInfo,
+  filters,
+  onFilterChange,
+  onSearch,
+  onResetFilters,
+  onPageChange,
+}: {
+  rows: DisplayScanRecord[]
+  loading: boolean
+  pageInfo: {
+    total: number
+    page: number
+    pageSize: number
+    totalPages: number
+  }
+  filters: ScanRecordFilters
+  onFilterChange: (field: keyof ScanRecordFilters, value: string) => void
+  onSearch: () => void
+  onResetFilters: () => void
+  onPageChange: (page: number) => void
+}) {
+  const submitFiltersOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') onSearch()
+  }
+
+  return (
+    <section className="jt-card overflow-hidden">
+      <SectionTitle icon={ListFilter} title="扫描记录" description="查询全部历史扫描，按运单、SKU、批次、结果、批次状态和关联工单筛选。" />
+      <div className="grid gap-3 border-y border-gray-100 px-6 py-4 xl:grid-cols-[1fr_1fr_1fr_150px_170px_1fr_auto_auto]">
+        <input className="rounded-lg border border-gray-200 px-3 py-2 text-sm" placeholder="运单号" value={filters.waybillNo} onChange={(event) => onFilterChange('waybillNo', event.target.value)} onKeyDown={submitFiltersOnEnter} />
+        <input className="rounded-lg border border-gray-200 px-3 py-2 text-sm" placeholder="SKU 编码" value={filters.skuCode} onChange={(event) => onFilterChange('skuCode', event.target.value)} onKeyDown={submitFiltersOnEnter} />
+        <input className="rounded-lg border border-gray-200 px-3 py-2 text-sm" placeholder="批次号" value={filters.batchNo} onChange={(event) => onFilterChange('batchNo', event.target.value)} onKeyDown={submitFiltersOnEnter} />
+        <select className="rounded-lg border border-gray-200 px-3 py-2 text-sm" value={filters.result} onChange={(event) => onFilterChange('result', event.target.value)}>
+          <option value="">全部结果</option>
+          <option value="passed">正常通过</option>
+          <option value="abnormal">异常暂扣</option>
+        </select>
+        <select className="rounded-lg border border-gray-200 px-3 py-2 text-sm" value={filters.batchStatus} onChange={(event) => onFilterChange('batchStatus', event.target.value)}>
+          <option value="">全部批次状态</option>
+          <option value="available">可用</option>
+          <option value="qc_hold">品控暂扣</option>
+          <option value="qc_released">已放行</option>
+          <option value="returned_supplier">退供应商</option>
+          <option value="repurchasing">重采购</option>
+          <option value="downgraded">降级处理</option>
+        </select>
+        <input className="rounded-lg border border-gray-200 px-3 py-2 text-sm" placeholder="关联工单" value={filters.ticketNo} onChange={(event) => onFilterChange('ticketNo', event.target.value)} onKeyDown={submitFiltersOnEnter} />
+        <button onClick={onSearch} className="jt-btn-primary h-10 px-4 text-sm">查询</button>
+        <button onClick={onResetFilters} className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">重置</button>
+      </div>
+      <div className="overflow-x-auto scrollbar-thin">
+        <table className="w-full min-w-[1080px] text-sm">
+          <thead className="bg-gray-50 text-left text-gray-500">
+            <tr>
+              <th className="px-5 py-4">扫描 ID</th>
+              <th className="px-5 py-4">运单/SKU</th>
+              <th className="px-5 py-4">批次号</th>
+              <th className="px-5 py-4">结果</th>
+              <th className="px-5 py-4">批次状态</th>
+              <th className="px-5 py-4">命中规则</th>
+              <th className="px-5 py-4">关联工单</th>
+              <th className="px-5 py-4">扫描时间</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={8} className="border-t border-gray-100 px-5 py-8 text-center text-gray-500">
+                  {loading ? '正在加载扫描记录...' : '暂无匹配扫描记录'}
+                </td>
+              </tr>
+            )}
+            {rows.map((record) => (
+              <tr key={record.id} className="border-t border-gray-100">
+                <td className="px-5 py-4 font-mono text-xs">{record.id}</td>
+                <td className="px-5 py-4">{record.waybillNo}<br /><span className="text-gray-500">{record.skuCode}</span></td>
+                <td className="px-5 py-4">{record.batchNo}</td>
+                <td className="px-5 py-4"><Badge tone={record.result === 'passed' ? 'green' : 'orange'}>{record.result === 'passed' ? '正常通过' : '异常暂扣'}</Badge></td>
+                <td className="px-5 py-4"><Badge tone={record.batchStatus === 'qc_hold' ? 'orange' : 'green'}>{batchStatusText(record.batchStatus)}</Badge></td>
+                <td className="px-5 py-4">{record.matchedRuleName || '-'}</td>
+                <td className="px-5 py-4">{record.ticketNo || record.ticketId || '-'}</td>
+                <td className="px-5 py-4">{formatMetricTime(record.scannedAt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <TracePagination pageInfo={pageInfo} loading={loading} onPageChange={onPageChange} />
+    </section>
+  )
+}
+
 function TicketPanel({
   statusFilter,
   onStatusFilterChange,
@@ -1098,6 +1386,8 @@ function TicketPanel({
   onWaybillFilterChange,
   onExceptionTypeFilterChange,
   onApproverFilterChange,
+  onSearch,
+  onResetFilters,
   ticketPageInfo,
   loading,
   onTicketPageChange,
@@ -1124,6 +1414,8 @@ function TicketPanel({
   onWaybillFilterChange: (value: string) => void
   onExceptionTypeFilterChange: (value: string) => void
   onApproverFilterChange: (value: string) => void
+  onSearch: () => void
+  onResetFilters: () => void
   ticketPageInfo: {
     total: number
     page: number
@@ -1140,6 +1432,9 @@ function TicketPanel({
 }) {
   const updateField = (field: keyof ReportFormState, value: string) => {
     onReportFormChange({ ...reportForm, [field]: value })
+  }
+  const submitFiltersOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') onSearch()
   }
 
   return (
@@ -1163,23 +1458,18 @@ function TicketPanel({
             {alert.message}
           </div>
         )}
-        <div className="grid gap-3 border-b border-gray-100 px-6 py-4 md:grid-cols-4">
+        <div className="grid gap-3 border-b border-gray-100 px-6 py-4 md:grid-cols-[1fr_1fr_1fr_auto_auto]">
           <input
             className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
             placeholder="运单号"
             value={waybillFilter}
-            onChange={(event) => {
-              onTicketPageChange(1)
-              onWaybillFilterChange(event.target.value)
-            }}
+            onChange={(event) => onWaybillFilterChange(event.target.value)}
+            onKeyDown={submitFiltersOnEnter}
           />
           <select
             className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
             value={exceptionTypeFilter}
-            onChange={(event) => {
-              onTicketPageChange(1)
-              onExceptionTypeFilterChange(event.target.value)
-            }}
+            onChange={(event) => onExceptionTypeFilterChange(event.target.value)}
           >
             <option value="">全部异常类型</option>
             {exceptionTypes.map((type) => (
@@ -1190,18 +1480,17 @@ function TicketPanel({
             className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
             placeholder="处理人"
             value={approverFilter}
-            onChange={(event) => {
-              onTicketPageChange(1)
-              onApproverFilterChange(event.target.value)
-            }}
+            onChange={(event) => onApproverFilterChange(event.target.value)}
+            onKeyDown={submitFiltersOnEnter}
           />
           <button
-            onClick={() => {
-              onTicketPageChange(1)
-              onWaybillFilterChange('')
-              onExceptionTypeFilterChange('')
-              onApproverFilterChange('')
-            }}
+            onClick={onSearch}
+            className="jt-btn-primary h-10 px-4 text-sm"
+          >
+            查询
+          </button>
+          <button
+            onClick={onResetFilters}
             className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
           >
             重置
@@ -1523,6 +1812,8 @@ function CompensationPanel({
   onKeywordChange,
   onDirectionChange,
   onStatusChange,
+  onSearch,
+  onResetFilters,
   onPageChange,
 }: {
   rows: Record<string, unknown>[]
@@ -1539,17 +1830,24 @@ function CompensationPanel({
   onKeywordChange: (value: string) => void
   onDirectionChange: (value: string) => void
   onStatusChange: (value: string) => void
+  onSearch: () => void
+  onResetFilters: () => void
   onPageChange: (page: number) => void
 }) {
+  const submitFiltersOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') onSearch()
+  }
+
   return (
     <section className="jt-card overflow-hidden">
       <SectionTitle icon={CheckCircle2} title="赔付记录" description="集中查看审批通过后自动生成的客户赔付和供应商追偿记录。" />
-      <div className="grid gap-3 border-y border-gray-100 px-6 py-4 md:grid-cols-4">
+      <div className="grid gap-3 border-y border-gray-100 px-6 py-4 md:grid-cols-[1fr_1fr_1fr_auto_auto]">
         <input
           className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
           placeholder="工单号 / 运单号"
           value={keyword}
           onChange={(event) => onKeywordChange(event.target.value)}
+          onKeyDown={submitFiltersOnEnter}
         />
         <select className="rounded-lg border border-gray-200 px-3 py-2 text-sm" value={direction} onChange={(event) => onDirectionChange(event.target.value)}>
           <option value="">全部赔付方向</option>
@@ -1564,12 +1862,13 @@ function CompensationPanel({
           <option value="reconciled">已对账</option>
         </select>
         <button
-          onClick={() => {
-            onKeywordChange('')
-            onDirectionChange('')
-            onStatusChange('')
-            onPageChange(1)
-          }}
+          onClick={onSearch}
+          className="jt-btn-primary h-10 px-4 text-sm"
+        >
+          查询
+        </button>
+        <button
+          onClick={onResetFilters}
           className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
         >
           重置
@@ -1623,6 +1922,8 @@ function InventoryPanel({
   movementType,
   onKeywordChange,
   onMovementTypeChange,
+  onSearch,
+  onResetFilters,
   onPageChange,
 }: {
   rows: Record<string, unknown>[]
@@ -1637,17 +1938,24 @@ function InventoryPanel({
   movementType: string
   onKeywordChange: (value: string) => void
   onMovementTypeChange: (value: string) => void
+  onSearch: () => void
+  onResetFilters: () => void
   onPageChange: (page: number) => void
 }) {
+  const submitFiltersOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') onSearch()
+  }
+
   return (
     <section className="jt-card overflow-hidden">
       <SectionTitle icon={Boxes} title="库存流水" description="集中查看审批执行或品控处理产生的库存联动记录。" />
-      <div className="grid gap-3 border-y border-gray-100 px-6 py-4 md:grid-cols-3">
+      <div className="grid gap-3 border-y border-gray-100 px-6 py-4 md:grid-cols-[1fr_1fr_auto_auto]">
         <input
           className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
           placeholder="工单号 / 运单号"
           value={keyword}
           onChange={(event) => onKeywordChange(event.target.value)}
+          onKeyDown={submitFiltersOnEnter}
         />
         <select className="rounded-lg border border-gray-200 px-3 py-2 text-sm" value={movementType} onChange={(event) => onMovementTypeChange(event.target.value)}>
           <option value="">全部库存动作</option>
@@ -1658,11 +1966,13 @@ function InventoryPanel({
           <option value="qc_close">品控关闭</option>
         </select>
         <button
-          onClick={() => {
-            onKeywordChange('')
-            onMovementTypeChange('')
-            onPageChange(1)
-          }}
+          onClick={onSearch}
+          className="jt-btn-primary h-10 px-4 text-sm"
+        >
+          查询
+        </button>
+        <button
+          onClick={onResetFilters}
           className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
         >
           重置
@@ -1770,19 +2080,20 @@ function RulesPanel() {
   const [ruleNameFilter, setRuleNameFilter] = useState('')
   const [ruleCodeFilter, setRuleCodeFilter] = useState('')
   const [ruleStatusFilter, setRuleStatusFilter] = useState('all')
+  const [appliedRuleFilters, setAppliedRuleFilters] = useState(defaultRuleFilters)
   const [rulePage, setRulePage] = useState(1)
   const [ruleModalOpen, setRuleModalOpen] = useState(false)
   const [ruleModalMode, setRuleModalMode] = useState<'create' | 'edit'>('create')
   const [ruleForm, setRuleForm] = useState<RuleFormState>(() => createDefaultRuleForm())
   const rulePageSize = 10
   const pagedRules = useMemo(() => filterAndPaginateRuleRows(rows, {
-    mode: ruleTypeFilter,
-    name: ruleNameFilter,
-    code: ruleCodeFilter,
-    status: ruleStatusFilter,
+    mode: appliedRuleFilters.mode,
+    name: appliedRuleFilters.name,
+    code: appliedRuleFilters.code,
+    status: appliedRuleFilters.status,
     page: rulePage,
     pageSize: rulePageSize,
-  }), [rows, ruleTypeFilter, ruleNameFilter, ruleCodeFilter, ruleStatusFilter, rulePage])
+  }), [rows, appliedRuleFilters, rulePage])
 
   useEffect(() => {
     let mounted = true
@@ -1885,6 +2196,29 @@ function RulesPanel() {
     setRuleModalOpen(true)
   }
 
+  const handleRuleSearch = () => {
+    setRulePage(1)
+    setAppliedRuleFilters({
+      mode: ruleTypeFilter,
+      name: ruleNameFilter,
+      code: ruleCodeFilter,
+      status: ruleStatusFilter,
+    })
+  }
+
+  const handleRuleReset = () => {
+    setRuleTypeFilter(defaultRuleFilters.mode)
+    setRuleNameFilter(defaultRuleFilters.name)
+    setRuleCodeFilter(defaultRuleFilters.code)
+    setRuleStatusFilter(defaultRuleFilters.status)
+    setRulePage(1)
+    setAppliedRuleFilters(defaultRuleFilters)
+  }
+
+  const submitRuleFiltersOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') handleRuleSearch()
+  }
+
   return (
     <section className="jt-card p-6">
       <SectionTitle icon={Settings2} title="规则配置中心" description="审批阈值和品控触发条件必须落库配置，延续 V2 规则引擎理念。" />
@@ -1895,14 +2229,11 @@ function RulesPanel() {
       )}
 
       <div className="mt-6 border-b border-gray-100 pb-5">
-        <div className="grid gap-3 lg:grid-cols-[150px_1fr_1fr_150px_auto]">
+        <div className="grid gap-3 lg:grid-cols-[150px_1fr_1fr_150px_auto_auto_auto]">
           <select
             className="h-10 rounded-lg border border-gray-200 px-3 text-sm"
             value={ruleTypeFilter}
-            onChange={(event) => {
-              setRuleTypeFilter(event.target.value)
-              setRulePage(1)
-            }}
+            onChange={(event) => setRuleTypeFilter(event.target.value)}
           >
             <option value="all">全部类型</option>
             <option value="approval">审批规则</option>
@@ -1914,33 +2245,32 @@ function RulesPanel() {
               className="h-10 w-full rounded-lg border border-gray-200 pl-9 pr-3 text-sm"
               placeholder="规则名称"
               value={ruleNameFilter}
-              onChange={(event) => {
-                setRuleNameFilter(event.target.value)
-                setRulePage(1)
-              }}
+              onChange={(event) => setRuleNameFilter(event.target.value)}
+              onKeyDown={submitRuleFiltersOnEnter}
             />
           </div>
           <input
             className="h-10 rounded-lg border border-gray-200 px-3 text-sm"
             placeholder="规则编码"
             value={ruleCodeFilter}
-            onChange={(event) => {
-              setRuleCodeFilter(event.target.value)
-              setRulePage(1)
-            }}
+            onChange={(event) => setRuleCodeFilter(event.target.value)}
+            onKeyDown={submitRuleFiltersOnEnter}
           />
           <select
             className="h-10 rounded-lg border border-gray-200 px-3 text-sm"
             value={ruleStatusFilter}
-            onChange={(event) => {
-              setRuleStatusFilter(event.target.value)
-              setRulePage(1)
-            }}
+            onChange={(event) => setRuleStatusFilter(event.target.value)}
           >
             <option value="all">全部状态</option>
             <option value="enabled">启用</option>
             <option value="disabled">停用</option>
           </select>
+          <button onClick={handleRuleSearch} className="jt-btn-primary h-10 px-5">
+            查询
+          </button>
+          <button onClick={handleRuleReset} className="h-10 rounded-lg border border-gray-200 px-5 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+            重置
+          </button>
           <button onClick={handleCreateRule} className="jt-btn-primary h-10 w-fit px-5">
             <Plus className="h-4 w-4" />
             新建规则
@@ -2238,6 +2568,7 @@ function MonitoringPanel({
   endpointFilter,
   onRequestIdFilterChange,
   onEndpointFilterChange,
+  onSearch,
   onResetFilters,
   onPageChange,
 }: {
@@ -2254,10 +2585,14 @@ function MonitoringPanel({
   endpointFilter: string
   onRequestIdFilterChange: (value: string) => void
   onEndpointFilterChange: (value: string) => void
+  onSearch: () => void
   onResetFilters: () => void
   onPageChange: (page: number) => void
 }) {
   const hasLogs = logRows.length > 0
+  const submitFiltersOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') onSearch()
+  }
 
   return (
     <section className="jt-card overflow-hidden">
@@ -2267,19 +2602,27 @@ function MonitoringPanel({
         <MiniMetric label="成功率" value={loading || !hasLogs ? '-' : `${summary.successRate}%`} />
         <MiniMetric label="降级次数" value={loading || !hasLogs ? '-' : summary.degradedCount} />
       </div>
-      <div className="grid gap-3 border-b border-gray-100 px-6 py-4 md:grid-cols-[1fr_1fr_auto]">
+      <div className="grid gap-3 border-b border-gray-100 px-6 py-4 md:grid-cols-[1fr_1fr_auto_auto]">
         <input
           className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
           placeholder="Request ID"
           value={requestIdFilter}
           onChange={(event) => onRequestIdFilterChange(event.target.value)}
+          onKeyDown={submitFiltersOnEnter}
         />
         <input
           className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
           placeholder="接口路径"
           value={endpointFilter}
           onChange={(event) => onEndpointFilterChange(event.target.value)}
+          onKeyDown={submitFiltersOnEnter}
         />
+        <button
+          onClick={onSearch}
+          className="jt-btn-primary h-10 px-4 text-sm"
+        >
+          查询
+        </button>
         <button
           onClick={onResetFilters}
           className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"

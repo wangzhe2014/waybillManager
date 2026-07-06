@@ -1,6 +1,44 @@
+[2026/07/06 ��һ 21:00:41.53] starting V3 on http://localhost:3001 with proxy 127.0.0.1:7897 
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3001
+  - Environments: .env.local
 
-> waybill-manager-v3@0.1.0 dev
-> next dev -p 3001
-
-
-D:\trae\waybillManager>
+ ✓ Starting...
+ ✓ Ready in 1858ms
+ ○ Compiling / ...
+ ✓ Compiled / in 2.2s (507 modules)
+ GET / 200 in 2462ms
+ GET / 200 in 46ms
+ ○ Compiling /api/compensations ...
+ ✓ Compiled /api/compensations in 642ms (337 modules)
+ ✓ Compiled (346 modules)
+ GET /api/inventory-movements?page=1&pageSize=10 200 in 2524ms
+ GET /api/tickets 200 in 2538ms
+ GET /api/compensations?page=1&pageSize=10 200 in 2544ms
+ GET /api/integration-logs?page=1&pageSize=10 200 in 2548ms
+ GET /api/tickets 200 in 127ms
+ GET /api/scan-records?page=1&pageSize=5 200 in 2678ms
+ GET /api/scan-records?page=1&pageSize=10 200 in 2679ms
+ GET /api/tickets?page=1&pageSize=10 200 in 128ms
+ GET /api/inventory-movements?page=1&pageSize=10 200 in 128ms
+ GET / 200 in 152ms
+ GET /api/tickets 200 in 297ms
+ GET /api/tickets?page=1&pageSize=10 200 in 338ms
+ GET /api/scan-records?page=1&pageSize=5 200 in 854ms
+ GET /api/integration-logs?page=1&pageSize=10 200 in 936ms
+ GET /api/compensations?page=1&pageSize=10 200 in 938ms
+ GET /api/tickets 200 in 347ms
+ GET /api/inventory-movements?page=1&pageSize=10 200 in 1072ms
+ GET /api/compensations?page=1&pageSize=10 200 in 303ms
+ GET /api/integration-logs?page=1&pageSize=10 200 in 442ms
+ GET /api/scan-records?page=1&pageSize=10 200 in 1381ms
+ GET /api/inventory-movements?page=1&pageSize=10 200 in 346ms
+ GET /api/scan-records?page=1&pageSize=5 200 in 648ms
+ GET /api/scan-records?page=1&pageSize=10 200 in 640ms
+ ✓ Compiled /api/scan in 515ms (349 modules)
+ POST /api/scan 201 in 5801ms
+ GET /api/tickets 200 in 296ms
+ GET /api/tickets?page=1&pageSize=10 200 in 278ms
+ GET /api/scan-records?page=1&pageSize=5 200 in 567ms
+ GET /api/scan-records?page=1&pageSize=10 200 in 561ms
+ GET /api/integration-logs?page=1&pageSize=10 200 in 288ms
