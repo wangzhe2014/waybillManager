@@ -2580,8 +2580,9 @@ function batchStatusText(status: ScanRecord['batchStatus']) {
 
 function traceTicketText(record: Record<string, unknown>) {
   const nestedTicket = record.exception_tickets as Record<string, unknown> | undefined
-  const ticketNo = firstRecordValue(record, ['ticketNo', 'ticket_no', 'ticketId', 'ticket_id'])
+  const ticketNo = firstRecordValue(record, ['ticketNo', 'ticket_no'])
     || firstRecordValue(nestedTicket || {}, ['ticket_no'])
+    || firstRecordValue(record, ['ticketId', 'ticket_id'])
   const waybillNo = firstRecordValue(record, ['waybillNo', 'waybill_no'])
     || firstRecordValue(nestedTicket || {}, ['waybill_no'])
   return [ticketNo, waybillNo].filter(Boolean).join(' / ') || '-'

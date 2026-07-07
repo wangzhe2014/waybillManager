@@ -64,6 +64,7 @@ test('execution creates traceable downstream records with correct compensation d
 
   assert.equal(result.ticket.status, 'completed')
   assert.equal(result.inventoryMovement.approvalRecordId, 'approval-001')
+  assert.equal(result.inventoryMovement.quantityDelta, -1)
   assert.equal(result.compensation.direction, 'supplier_recovery')
   assert.equal(result.batchStatus, 'returned_supplier')
 
@@ -82,6 +83,43 @@ test('execution creates traceable downstream records with correct compensation d
   })
 
   assert.equal(logisticsResult.compensation.direction, 'customer_compensation')
+})
+
+test('execution records meaningful inventory quantity deltas', () => {
+  const reshipResult = executeApprovedTicket({
+    ticket: {
+      id: 'ticket-reship',
+      source: 'manual_report',
+      exceptionCategory: 'logistics',
+      exceptionType: '收货地址错误',
+      status: 'executing',
+      waybillNo: 'PS2512220005002',
+      amount: 300,
+      approvedRecordId: 'approval-reship',
+    },
+    action: 'reship',
+  })
+
+  assert.equal(reshipResult.inventoryMovement.movementType, 'stock_out')
+  assert.equal(reshipResult.inventoryMovement.quantityDelta, -1)
+
+  const returnToStockResult = executeApprovedTicket({
+    ticket: {
+      id: 'ticket-return',
+      source: 'manual_report',
+      exceptionCategory: 'logistics',
+      exceptionType: '客户拒收',
+      status: 'executing',
+      waybillNo: 'PS2512220003',
+      amount: 300,
+      approvedRecordId: 'approval-return',
+      inventoryQuantity: 2,
+    },
+    action: 'return_to_stock',
+  })
+
+  assert.equal(returnToStockResult.inventoryMovement.movementType, 'stock_in')
+  assert.equal(returnToStockResult.inventoryMovement.quantityDelta, 2)
 })
 
 test('approval success resolves a deterministic downstream execution action', () => {

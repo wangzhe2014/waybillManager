@@ -194,6 +194,10 @@ export function executeApprovedTicket({ ticket, action }) {
         skuCode: ticket.skuCode,
         batchNo: ticket.batchNo,
         movementType: action === 'return_supplier' ? 'stock_out' : 'status_change',
+        quantityDelta: resolveInventoryQuantityDelta({
+          movementType: action === 'return_supplier' ? 'stock_out' : 'status_change',
+          ticket,
+        }),
       },
       compensation,
     }
@@ -210,6 +214,7 @@ export function executeApprovedTicket({ ticket, action }) {
           approvalRecordId: ticket.approvedRecordId,
           waybillNo: ticket.waybillNo,
           movementType,
+          quantityDelta: resolveInventoryQuantityDelta({ movementType, ticket }),
         },
     compensation: action === 'customer_compensation'
       ? {
@@ -221,6 +226,19 @@ export function executeApprovedTicket({ ticket, action }) {
         }
       : null,
   }
+}
+
+export function resolveInventoryQuantityDelta({ movementType, ticket = {} }) {
+  const quantity = Math.max(1, Number(
+    ticket.inventoryQuantity
+    ?? ticket.quantity
+    ?? ticket.skuQuantity
+    ?? 1
+  ) || 1)
+
+  if (movementType === 'stock_out') return -quantity
+  if (movementType === 'stock_in') return quantity
+  return 0
 }
 
 export function resolveAutoExecutionAction(ticket = {}) {

@@ -445,6 +445,7 @@ DECLARE
   v_compensation_status TEXT;
   v_movement_type TEXT;
   v_batch_status TEXT;
+  v_quantity_delta INTEGER;
 BEGIN
   SELECT *
   INTO v_ticket
@@ -485,6 +486,19 @@ BEGIN
       updated_at = now()
     WHERE locked_by_ticket_id = v_ticket.id;
 
+    v_movement_type := CASE WHEN p_action = 'return_supplier' THEN 'stock_out' ELSE 'status_change' END;
+    v_quantity_delta := CASE
+      WHEN v_movement_type = 'stock_out' THEN -GREATEST(COALESCE((
+        SELECT quantity
+        FROM inventory_batches
+        WHERE sku_code = v_ticket.sku_code
+          AND batch_no = v_ticket.batch_no
+        ORDER BY updated_at DESC
+        LIMIT 1
+      ), 1), 1)
+      ELSE 0
+    END;
+
     INSERT INTO inventory_movements (
       ticket_id,
       approval_record_id,
@@ -495,8 +509,8 @@ BEGIN
     VALUES (
       v_ticket.id,
       p_approval_record_id,
-      CASE WHEN p_action = 'return_supplier' THEN 'stock_out' ELSE 'status_change' END,
-      0,
+      v_movement_type,
+      v_quantity_delta,
       concat('quality action: ', p_action)
     );
 
@@ -527,6 +541,11 @@ BEGIN
       WHEN 'return_to_stock' THEN 'stock_in'
       ELSE NULL
     END;
+    v_quantity_delta := CASE v_movement_type
+      WHEN 'stock_out' THEN -1
+      WHEN 'stock_in' THEN 1
+      ELSE 0
+    END;
 
     IF v_movement_type IS NOT NULL THEN
       INSERT INTO inventory_movements (
@@ -540,7 +559,7 @@ BEGIN
         v_ticket.id,
         p_approval_record_id,
         v_movement_type,
-        0,
+        v_quantity_delta,
         concat('logistics action: ', p_action)
       );
     END IF;

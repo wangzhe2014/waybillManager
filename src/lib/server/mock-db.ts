@@ -1,5 +1,6 @@
 import { integrationLogs, scanRecords, tickets, waybillSnapshots } from '@/lib/demo-data'
 import { filterAndPaginateIntegrationLogs } from '@/lib/core/integration-log-query.mjs'
+import { resolveInventoryQuantityDelta } from '@/lib/core/workflow.mjs'
 import type { ExceptionTicket, IntegrationLog, ScanRecord, TicketDetail, WaybillSnapshot } from '@/types'
 
 export const defaultApprovalRules = [
@@ -445,7 +446,10 @@ export const mockStore = {
         ticketId: ticket.id,
         approvalRecordId: params.approvalRecordId,
         movementType: params.action === 'return_supplier' ? 'stock_out' : 'status_change',
-        quantityDelta: 0,
+        quantityDelta: resolveInventoryQuantityDelta({
+          movementType: params.action === 'return_supplier' ? 'stock_out' : 'status_change',
+          ticket,
+        }),
         remark: `quality action: ${params.action}`,
         createdAt: new Date().toISOString(),
       })
@@ -472,7 +476,7 @@ export const mockStore = {
           ticketId: ticket.id,
           approvalRecordId: params.approvalRecordId,
           movementType,
-          quantityDelta: 0,
+          quantityDelta: resolveInventoryQuantityDelta({ movementType, ticket }),
           remark: `logistics action: ${params.action}`,
           createdAt: new Date().toISOString(),
         })
