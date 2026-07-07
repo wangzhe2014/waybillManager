@@ -29,6 +29,7 @@ NEXT_PUBLIC_SUPABASE_URL=your_v3_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_v3_supabase_anon_key
 V2_API_BASE_URL=http://localhost:3000
 V2_API_KEY=service_to_service_key
+CRON_SECRET=random_timeout_job_secret
 ```
 
 V2 项目对应需要配置同一个服务间密钥：
@@ -69,7 +70,7 @@ V3 侧已按 HTTP API 对接方式封装 `src/lib/v2-client.ts`。V2 侧已在 `
 - `/api/tickets` 已支持 `status`、`waybillNo`、`exceptionType`、`approver`、`page`、`pageSize` 查询参数，前端已接入筛选和分页。
 - `/api/rules` 已支持读取、保存和停用审批/品控规则；前端规则配置中心已接入新增、编辑、启停操作。
 - 前端已提供当前身份切换器，审批和快速放行会使用所选身份的 `actorId` 与角色权限。
-- `/api/timeouts/process` 已提供超时自动流转入口，可由 Vercel Cron 或手工 POST 触发；待审/一级超时升级二级，二级超时自动关闭驳回并写审批记录。
+- `/api/timeouts/process` 已提供超时自动流转入口，可由 GitHub Actions Schedule 等外部调度器或手工 POST 触发；待审/一级超时升级二级，二级超时自动关闭驳回并写审批记录。
 - `supabase/seed.sql` 提供默认审批规则和品控规则，可在执行 `supabase/schema.sql` 后运行。
 - 已建库环境需追加执行 `supabase/migration_add_quality_scan_transaction.sql`，用于品控异常扫码的“建单/锁批次/写扫描记录”单事务 RPC。
 - 如果数据库已执行过旧版 `schema.sql`，需要额外执行 `supabase/migration_add_ticket_batch_fields.sql`，为品控工单补 `sku_code` 和 `batch_no` 字段。
@@ -86,13 +87,17 @@ npm run build
 
 `npm run build` 用于最终生产构建验证；如本机耗时过长，可先以 `npm test` 和 `npm run typecheck` 作为快速验收。
 
-## 定时任务监控
+## 外部定时任务
 
-- 任务配置：`src/lib/core/scheduled-tasks.mjs` 维护定时任务列表，新增任务时追加配置即可进入监控页。
-- 后台定时：`vercel.json` 已配置每 5 分钟请求一次 `/api/timeouts/process`。
-- 触发方式：`GET /api/timeouts/process` 用于后台 Cron，`POST /api/timeouts/process` 用于监控页手动执行一次。
-- 安全配置：Vercel 部署建议配置 `CRON_SECRET`；外部调度器也可使用 `TIMEOUT_CRON_SECRET`，接口会兼容读取两者。
+当前 Vercel 配置不依赖内置 Cron，超时自动流转由 GitHub Actions Schedule 等外部调度器调用 V3 接口。
+
+- 工作流文件：`.github/workflows/v3-timeout-processor.yml`
+- 调度频率：每 5 分钟
+- 触发接口：`POST /api/timeouts/process`
+- GitHub Secrets：
+  - `V3_TIMEOUT_URL`：生产环境完整接口地址，例如 `https://your-v3-domain/api/timeouts/process`
+  - `CRON_SECRET`：与 V3 部署环境中的 `CRON_SECRET` 或 `TIMEOUT_CRON_SECRET` 保持一致
 - 鉴权方式：请求头 `Authorization: Bearer <secret>` 或 `x-cron-secret: <secret>` 任一匹配即可执行。
-- 页面入口：左侧“定时任务”页查看任务频率、接口、最近手动执行结果，并可手动执行一次用于验收和排障。
+- 手动触发：GitHub Actions 页面可使用 `workflow_dispatch` 立即执行一次。
 - 日志查询：左侧“接口监控”页支持按 `requestId`、接口路径搜索，并按每页 10 条分页展示。
 - 执行日志：后台或手动触发都会写入 `integration_logs`，接口监控日志表可看到 `/api/timeouts/process` 的执行记录。
