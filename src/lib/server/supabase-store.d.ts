@@ -89,6 +89,7 @@ export function createSupabaseStore(client: unknown): {
   }): Promise<unknown>
   listCompensationRecords(limit?: number): Promise<Array<Record<string, unknown>>>
   listInventoryMovements(limit?: number): Promise<Array<Record<string, unknown>>>
+  listInventoryBatches(limit?: number): Promise<Array<Record<string, unknown>>>
 }
 
 export function mapSnapshotToRow(snapshot: WaybillSnapshot): Record<string, unknown>

@@ -226,6 +226,91 @@ test('quality scan validates SKU through V2 and reuses an open quality ticket fo
   assert.equal(store.state.logs[0].requestId, 'req-scan-ok')
 })
 
+test('quality scan reports a clear business error when V2 returns valid false with HTTP 200', async () => {
+  const store = createMemoryStore()
+  const v2Client = {
+    async validateWaybillSku(waybillNo, skuCode) {
+      return {
+        data: {
+          valid: false,
+          waybillNo,
+          skuCode,
+        },
+        requestId: 'req-scan-invalid',
+        status: 'success',
+        statusCode: 200,
+        durationMs: 28,
+      }
+    },
+  }
+
+  await assert.rejects(
+    () => processQualityScanWithV2({
+      input: {
+        waybillNo: 'PS2512220005001',
+        skuCode: 'SKU-NOT-IN-WAYBILL',
+        batchNo: 'BATCH-HK-0703-A',
+        operator: '扫描员-王磊',
+      },
+      qualityRules: [],
+      store,
+      v2Client,
+    }),
+    /SKU SKU-NOT-IN-WAYBILL 不属于运单 PS2512220005001/
+  )
+  assert.equal(store.state.tickets.length, 0)
+  assert.equal(store.state.scans.length, 0)
+  assert.equal(store.state.logs[0].statusCode, 200)
+})
+
+test('quality scan accepts V2 SKU validation payload wrapped by data', async () => {
+  const store = createMemoryStore()
+  const v2Client = {
+    async validateWaybillSku(waybillNo, skuCode) {
+      return {
+        data: {
+          data: {
+            valid: true,
+            waybillNo,
+            skuCode,
+            skuName: '冷链牛肉卷',
+          },
+        },
+        requestId: 'req-scan-wrapped',
+        status: 'success',
+        statusCode: 200,
+        durationMs: 32,
+      }
+    },
+    async getWaybillDetail() {
+      return {
+        data: null,
+        requestId: 'req-detail-skip',
+        status: 'failed',
+        statusCode: 404,
+        durationMs: 20,
+        error: '测试跳过详情',
+      }
+    },
+  }
+
+  await processQualityScanWithV2({
+    input: {
+      waybillNo: 'PS2512220005001',
+      skuCode: 'ZBWP10086',
+      batchNo: 'BATCH-HK-0703-WRAPPED',
+      operator: '扫描员-王磊',
+      damageLevel: 0,
+    },
+    qualityRules: [],
+    store,
+    v2Client,
+  })
+
+  assert.equal(store.state.scans.length, 1)
+  assert.equal(store.state.scans[0].skuName, '冷链牛肉卷')
+})
+
 test('quality scan writes a full waybill snapshot after V2 SKU validation succeeds', async () => {
   const store = createMemoryStore()
   const v2Client = {

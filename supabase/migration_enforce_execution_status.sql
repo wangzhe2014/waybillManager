@@ -15,6 +15,8 @@ DECLARE
   v_movement_type TEXT;
   v_batch_status TEXT;
   v_quantity_delta INTEGER;
+  v_batch_id UUID;
+  v_batch_quantity INTEGER;
 BEGIN
   SELECT *
   INTO v_ticket
@@ -44,31 +46,35 @@ BEGIN
       ELSE 'qc_released'
     END;
 
+    SELECT id, quantity
+    INTO v_batch_id, v_batch_quantity
+    FROM inventory_batches
+    WHERE sku_code = v_ticket.sku_code
+      AND batch_no = v_ticket.batch_no
+    ORDER BY updated_at DESC
+    LIMIT 1
+    FOR UPDATE;
+
+    v_movement_type := CASE WHEN p_action = 'return_supplier' THEN 'stock_out' ELSE 'status_change' END;
+    v_quantity_delta := CASE
+      WHEN v_movement_type = 'stock_out' THEN -GREATEST(COALESCE(v_batch_quantity, 1), 1)
+      ELSE 0
+    END;
+
     UPDATE scan_records
     SET batch_status = v_batch_status
     WHERE ticket_id = v_ticket.id;
 
     UPDATE inventory_batches
     SET
+      quantity = GREATEST(quantity + v_quantity_delta, 0),
       status = v_batch_status,
       locked_by_ticket_id = NULL,
       updated_at = now()
-    WHERE locked_by_ticket_id = v_ticket.id;
-
-    v_movement_type := CASE WHEN p_action = 'return_supplier' THEN 'stock_out' ELSE 'status_change' END;
-    v_quantity_delta := CASE
-      WHEN v_movement_type = 'stock_out' THEN -GREATEST(COALESCE((
-        SELECT quantity
-        FROM inventory_batches
-        WHERE sku_code = v_ticket.sku_code
-          AND batch_no = v_ticket.batch_no
-        ORDER BY updated_at DESC
-        LIMIT 1
-      ), 1), 1)
-      ELSE 0
-    END;
+    WHERE id = v_batch_id;
 
     INSERT INTO inventory_movements (
+      batch_id,
       ticket_id,
       approval_record_id,
       movement_type,
@@ -76,6 +82,7 @@ BEGIN
       remark
     )
     VALUES (
+      v_batch_id,
       v_ticket.id,
       p_approval_record_id,
       v_movement_type,
@@ -115,9 +122,28 @@ BEGIN
       WHEN 'stock_in' THEN 1
       ELSE 0
     END;
+    v_batch_id := NULL;
+
+    IF v_movement_type IS NOT NULL AND v_ticket.sku_code IS NOT NULL AND v_ticket.batch_no IS NOT NULL THEN
+      SELECT id
+      INTO v_batch_id
+      FROM inventory_batches
+      WHERE sku_code = v_ticket.sku_code
+        AND batch_no = v_ticket.batch_no
+      ORDER BY updated_at DESC
+      LIMIT 1
+      FOR UPDATE;
+
+      UPDATE inventory_batches
+      SET
+        quantity = GREATEST(quantity + v_quantity_delta, 0),
+        updated_at = now()
+      WHERE id = v_batch_id;
+    END IF;
 
     IF v_movement_type IS NOT NULL THEN
       INSERT INTO inventory_movements (
+        batch_id,
         ticket_id,
         approval_record_id,
         movement_type,
@@ -125,6 +151,7 @@ BEGIN
         remark
       )
       VALUES (
+        v_batch_id,
         v_ticket.id,
         p_approval_record_id,
         v_movement_type,

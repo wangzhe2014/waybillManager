@@ -1,0 +1,205 @@
+-- Sync lightweight inventory balances when approval execution creates movements.
+-- Execute once on existing V3 databases after migration_inventory_quantity_delta.sql.
+
+CREATE OR REPLACE FUNCTION complete_ticket_execution(
+  p_ticket_no TEXT,
+  p_approval_record_id UUID,
+  p_action TEXT,
+  p_actor_id TEXT DEFAULT 'system'
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_ticket exception_tickets%ROWTYPE;
+  v_direction TEXT;
+  v_compensation_status TEXT;
+  v_movement_type TEXT;
+  v_batch_status TEXT;
+  v_quantity_delta INTEGER;
+  v_batch_id UUID;
+  v_batch_quantity INTEGER;
+BEGIN
+  SELECT *
+  INTO v_ticket
+  FROM exception_tickets
+  WHERE ticket_no = p_ticket_no
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'ticket % not found', p_ticket_no;
+  END IF;
+
+  IF v_ticket.status <> 'executing' THEN
+    RAISE EXCEPTION 'ticket % status % cannot execute', p_ticket_no, v_ticket.status;
+  END IF;
+
+  IF v_ticket.exception_category = 'quality' THEN
+    v_direction := CASE
+      WHEN p_action = 'release' THEN NULL
+      ELSE 'supplier_recovery'
+    END;
+
+    v_compensation_status := 'pending_reconciliation';
+    v_batch_status := CASE p_action
+      WHEN 'return_supplier' THEN 'returned_supplier'
+      WHEN 'repurchase' THEN 'repurchasing'
+      WHEN 'downgrade' THEN 'downgraded'
+      ELSE 'qc_released'
+    END;
+
+    SELECT id, quantity
+    INTO v_batch_id, v_batch_quantity
+    FROM inventory_batches
+    WHERE sku_code = v_ticket.sku_code
+      AND batch_no = v_ticket.batch_no
+    ORDER BY updated_at DESC
+    LIMIT 1
+    FOR UPDATE;
+
+    v_movement_type := CASE WHEN p_action = 'return_supplier' THEN 'stock_out' ELSE 'status_change' END;
+    v_quantity_delta := CASE
+      WHEN v_movement_type = 'stock_out' THEN -GREATEST(COALESCE(v_batch_quantity, 1), 1)
+      ELSE 0
+    END;
+
+    UPDATE scan_records
+    SET batch_status = v_batch_status
+    WHERE ticket_id = v_ticket.id;
+
+    UPDATE inventory_batches
+    SET
+      quantity = GREATEST(quantity + v_quantity_delta, 0),
+      status = v_batch_status,
+      locked_by_ticket_id = NULL,
+      updated_at = now()
+    WHERE id = v_batch_id;
+
+    INSERT INTO inventory_movements (
+      batch_id,
+      ticket_id,
+      approval_record_id,
+      movement_type,
+      quantity_delta,
+      remark
+    )
+    VALUES (
+      v_batch_id,
+      v_ticket.id,
+      p_approval_record_id,
+      v_movement_type,
+      v_quantity_delta,
+      concat('quality action: ', p_action)
+    );
+
+    IF v_direction IS NOT NULL THEN
+      INSERT INTO compensation_records (
+        ticket_id,
+        approval_record_id,
+        amount,
+        direction,
+        status
+      )
+      VALUES (
+        v_ticket.id,
+        p_approval_record_id,
+        v_ticket.amount,
+        v_direction,
+        v_compensation_status
+      );
+    END IF;
+  ELSE
+    v_direction := CASE
+      WHEN p_action = 'customer_compensation' THEN 'customer_compensation'
+      ELSE NULL
+    END;
+
+    v_movement_type := CASE p_action
+      WHEN 'reship' THEN 'stock_out'
+      WHEN 'return_to_stock' THEN 'stock_in'
+      ELSE NULL
+    END;
+    v_quantity_delta := CASE v_movement_type
+      WHEN 'stock_out' THEN -1
+      WHEN 'stock_in' THEN 1
+      ELSE 0
+    END;
+    v_batch_id := NULL;
+
+    IF v_movement_type IS NOT NULL AND v_ticket.sku_code IS NOT NULL AND v_ticket.batch_no IS NOT NULL THEN
+      SELECT id
+      INTO v_batch_id
+      FROM inventory_batches
+      WHERE sku_code = v_ticket.sku_code
+        AND batch_no = v_ticket.batch_no
+      ORDER BY updated_at DESC
+      LIMIT 1
+      FOR UPDATE;
+
+      UPDATE inventory_batches
+      SET
+        quantity = GREATEST(quantity + v_quantity_delta, 0),
+        updated_at = now()
+      WHERE id = v_batch_id;
+    END IF;
+
+    IF v_movement_type IS NOT NULL THEN
+      INSERT INTO inventory_movements (
+        batch_id,
+        ticket_id,
+        approval_record_id,
+        movement_type,
+        quantity_delta,
+        remark
+      )
+      VALUES (
+        v_batch_id,
+        v_ticket.id,
+        p_approval_record_id,
+        v_movement_type,
+        v_quantity_delta,
+        concat('logistics action: ', p_action)
+      );
+    END IF;
+
+    IF v_direction IS NOT NULL THEN
+      INSERT INTO compensation_records (
+        ticket_id,
+        approval_record_id,
+        amount,
+        direction,
+        status
+      )
+      VALUES (
+        v_ticket.id,
+        p_approval_record_id,
+        v_ticket.amount,
+        v_direction,
+        'pending_payment'
+      );
+    END IF;
+  END IF;
+
+  UPDATE exception_tickets
+  SET
+    status = 'completed',
+    current_approver_id = NULL,
+    version = version + 1,
+    updated_at = now()
+  WHERE id = v_ticket.id;
+
+  INSERT INTO ticket_events (ticket_id, event_type, actor_id, detail)
+  VALUES (
+    v_ticket.id,
+    'execution_completed',
+    p_actor_id,
+    jsonb_build_object('action', p_action, 'approval_record_id', p_approval_record_id)
+  );
+
+  RETURN jsonb_build_object(
+    'ticketNo', p_ticket_no,
+    'status', 'completed',
+    'action', p_action
+  );
+END;
+$$;

@@ -26,11 +26,28 @@ import { statusText } from '@/lib/demo-data'
 import { getActorProfile, roleOptions } from '@/lib/core/role-service.mjs'
 import { buildMonitoringSummary } from '@/lib/core/monitoring-service.mjs'
 import { buildApprovalWorkbench, getTicketActionBlockReason } from '@/lib/core/action-permissions.mjs'
+import { Badge, MiniMetric, SectionTitle, TracePagination } from '@/components/shared-ui'
 import {
   countDueSoonTickets,
   getDashboardTicketReason,
   selectDashboardKeyTickets,
 } from '@/lib/core/dashboard-service.mjs'
+import {
+  approvalLevelText,
+  approvalResultText,
+  batchStatusText,
+  compensationDirectionText,
+  compensationStatusText,
+  eventDetailText,
+  firstRecordValue,
+  formatMetricTime,
+  integrationLogStatusText,
+  inventoryMovementText,
+  recordValue,
+  scanResultText,
+  ticketEventText,
+  traceTicketText,
+} from '@/lib/core/display-formatters.mjs'
 import { filterAndPaginateRuleRows } from '@/lib/core/rule-service.mjs'
 import type { ExceptionTicket, IntegrationLog, ScanRecord, TicketDetail } from '@/types'
 
@@ -185,6 +202,7 @@ export default function Home() {
   })
   const [compensationRows, setCompensationRows] = useState<Record<string, unknown>[]>([])
   const [inventoryRows, setInventoryRows] = useState<Record<string, unknown>[]>([])
+  const [inventoryBalanceRows, setInventoryBalanceRows] = useState<Record<string, unknown>[]>([])
   const [compensationPage, setCompensationPage] = useState(1)
   const [inventoryPage, setInventoryPage] = useState(1)
   const [compensationPageInfo, setCompensationPageInfo] = useState({
@@ -229,6 +247,7 @@ export default function Home() {
   const [logsLoading, setLogsLoading] = useState(true)
   const [compensationsLoading, setCompensationsLoading] = useState(true)
   const [inventoryLoading, setInventoryLoading] = useState(true)
+  const [inventoryBalancesLoading, setInventoryBalancesLoading] = useState(true)
   const [toast, setToast] = useState<InlineMessage | null>(null)
   const [scanAlert, setScanAlert] = useState<InlineMessage | null>(null)
   const [ticketAlert, setTicketAlert] = useState<InlineMessage | null>(null)
@@ -280,6 +299,10 @@ export default function Home() {
   useEffect(() => {
     refreshInventoryMovements(inventoryPage)
   }, [inventoryPage, appliedInventoryFilters])
+
+  useEffect(() => {
+    refreshInventoryBalances()
+  }, [appliedInventoryFilters])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -478,6 +501,22 @@ export default function Home() {
     }
   }
 
+  const refreshInventoryBalances = async () => {
+    setInventoryBalancesLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (appliedInventoryFilters.keyword.trim()) params.set('keyword', appliedInventoryFilters.keyword.trim())
+      const response = await fetch(`/api/inventory-balances?${params.toString()}`)
+      const data = await response.json()
+      if (!response.ok || data.error) throw new Error(data.error || '库存余额加载失败')
+      setInventoryBalanceRows(Array.isArray(data.records) ? data.records : [])
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : '库存余额加载失败')
+    } finally {
+      setInventoryBalancesLoading(false)
+    }
+  }
+
   const handleTicketSearch = () => {
     setTicketPage(1)
     setAppliedTicketFilters({
@@ -606,6 +645,7 @@ export default function Home() {
       }
       await refreshTickets()
       await refreshTicketList()
+      await refreshInventoryBalances()
       setScanPage(1)
       await refreshScanRecords(1)
       setScanRecordPage(1)
@@ -681,6 +721,7 @@ export default function Home() {
       await refreshScanRecords(scanPage)
       await refreshCompensations()
       await refreshInventoryMovements()
+      await refreshInventoryBalances()
       notifySuccess(decision === 'approved' ? '审批已通过，库存/赔付已自动联动完成。' : '审批已拒绝，工单等待重新提交。')
     } catch (error) {
       notifyError(error instanceof Error ? error.message : '审批提交失败')
@@ -741,6 +782,7 @@ export default function Home() {
       await refreshScanRecords(scanPage)
       await refreshCompensations()
       await refreshInventoryMovements()
+      await refreshInventoryBalances()
       notifySuccess('执行联动已完成，库存/赔付/批次状态已由后端事务处理。')
     } catch (error) {
       notifyError(error instanceof Error ? error.message : '执行联动失败')
@@ -774,6 +816,7 @@ export default function Home() {
       await refreshTicketList()
       await refreshScanRecords(scanPage)
       await refreshInventoryMovements()
+      await refreshInventoryBalances()
       notifySuccess('品控主管已快速放行，批次状态已解锁。')
     } catch (error) {
       notifyError(error instanceof Error ? error.message : '快速放行失败')
@@ -938,7 +981,9 @@ export default function Home() {
           )}
           {activeTab === 'inventory' && (
             <InventoryPanel
+              balanceRows={inventoryBalanceRows}
               rows={inventoryRows}
+              balancesLoading={inventoryBalancesLoading}
               loading={inventoryLoading}
               pageInfo={inventoryPageInfo}
               keyword={inventoryKeyword}
@@ -1863,7 +1908,9 @@ function CompensationPanel({
 }
 
 function InventoryPanel({
+  balanceRows,
   rows,
+  balancesLoading,
   loading,
   pageInfo,
   keyword,
@@ -1874,7 +1921,9 @@ function InventoryPanel({
   onResetFilters,
   onPageChange,
 }: {
+  balanceRows: Record<string, unknown>[]
   rows: Record<string, unknown>[]
+  balancesLoading: boolean
   loading: boolean
   pageInfo: {
     total: number
@@ -1893,10 +1942,13 @@ function InventoryPanel({
   const submitFiltersOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') onSearch()
   }
+  const totalAvailable = balanceRows.reduce((sum, record) => sum + Math.max(0, Number(recordValue(record, ['quantity']) || 0)), 0)
+  const lockedCount = balanceRows.filter((record) => recordValue(record, ['lockedByTicketId', 'locked_by_ticket_id']) !== '-').length
+  const exceptionBatchCount = balanceRows.filter((record) => !['available', '-'].includes(recordValue(record, ['status']))).length
 
   return (
     <section className="jt-card overflow-hidden">
-      <SectionTitle icon={Boxes} title="库存流水" description="集中查看审批执行或品控处理产生的库存联动记录。" />
+      <SectionTitle icon={Boxes} title="库存余额与流水" description="上方展示 V3 轻量库存余额，下方展示审批执行或品控处理产生的库存联动流水。" />
       <div className="jt-toolbar px-6 py-4 md:grid-cols-[1fr_1fr_auto_auto]">
         <input
           className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
@@ -1926,6 +1978,63 @@ function InventoryPanel({
         >
           重置
         </button>
+      </div>
+      <div className="grid gap-4 border-b border-gray-100 bg-gray-50 px-6 py-5 md:grid-cols-3">
+        <MiniMetric label="当前库存余额" value={balancesLoading ? '-' : totalAvailable} />
+        <MiniMetric label="锁定批次数" value={balancesLoading ? '-' : lockedCount} />
+        <MiniMetric label="异常状态批次" value={balancesLoading ? '-' : exceptionBatchCount} />
+      </div>
+      <div className="border-b border-gray-100 px-6 py-5">
+        <h3 className="text-sm font-semibold text-gray-900">库存余额</h3>
+        <p className="mt-1 text-xs text-gray-500">按 SKU + 批次维护当前余额、批次状态和锁定工单；手工物流异常如果缺少批次信息，只进入流水审计。</p>
+        <div className="mt-4 overflow-x-auto scrollbar-thin">
+          <table className="w-full min-w-[900px] text-sm">
+            <colgroup>
+              <col className="w-[170px]" />
+              <col />
+              <col className="w-[170px]" />
+              <col className="w-[110px]" />
+              <col className="w-[130px]" />
+              <col className="w-[220px]" />
+              <col className="w-[170px]" />
+            </colgroup>
+            <thead className="bg-gray-50 text-left text-gray-500">
+              <tr>
+                <th className="px-5 py-4">SKU</th>
+                <th className="px-5 py-4">名称</th>
+                <th className="px-5 py-4">批次</th>
+                <th className="px-5 py-4">余额</th>
+                <th className="px-5 py-4">状态</th>
+                <th className="px-5 py-4">锁定工单</th>
+                <th className="px-5 py-4">更新时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              {balanceRows.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="border-t border-gray-100 px-5 py-8 text-center text-gray-500">
+                    {balancesLoading ? '正在加载库存余额...' : '暂无库存余额'}
+                  </td>
+                </tr>
+              )}
+              {balanceRows.map((record, index) => (
+                <tr key={String(recordValue(record, ['id']) || index)} className="border-t border-gray-100">
+                  <td className="px-5 py-4 font-mono text-xs">{recordValue(record, ['skuCode', 'sku_code'])}</td>
+                  <td className="px-5 py-4">{recordValue(record, ['skuName', 'sku_name'])}</td>
+                  <td className="px-5 py-4 font-mono text-xs">{recordValue(record, ['batchNo', 'batch_no'])}</td>
+                  <td className="px-5 py-4 font-semibold text-gray-900">{recordValue(record, ['quantity'])}</td>
+                  <td className="px-5 py-4"><Badge tone={recordValue(record, ['status']) === 'available' ? 'green' : 'orange'}>{batchStatusText(recordValue(record, ['status']) as ScanRecord['batchStatus'])}</Badge></td>
+                  <td className="px-5 py-4">{balanceLockText(record)}</td>
+                  <td className="px-5 py-4">{formatMetricTime(recordValue(record, ['updatedAt', 'updated_at']))}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div className="px-6 py-5">
+        <h3 className="text-sm font-semibold text-gray-900">库存流水</h3>
+        <p className="mt-1 text-xs text-gray-500">记录审批联动产生的出库、入库和批次状态变化，保留审批记录用于追溯。</p>
       </div>
       <div className="overflow-x-auto scrollbar-thin">
         <table className="w-full min-w-[1040px] text-sm">
@@ -1973,59 +2082,6 @@ function InventoryPanel({
       </div>
       <TracePagination pageInfo={pageInfo} loading={loading} onPageChange={onPageChange} />
     </section>
-  )
-}
-
-function TracePagination({
-  pageInfo,
-  loading,
-  onPageChange,
-}: {
-  pageInfo: {
-    total: number
-    page: number
-    pageSize: number
-    totalPages: number
-  }
-  loading: boolean
-  onPageChange: (page: number) => void
-}) {
-  return (
-    <div className="flex flex-col gap-3 border-t border-gray-100 px-6 py-4 text-sm text-gray-600 md:flex-row md:items-center md:justify-between">
-      <span>
-        共 {pageInfo.total} 条，每页 {pageInfo.pageSize} 条，第 {pageInfo.page} / {pageInfo.totalPages} 页
-      </span>
-      <div className="flex flex-wrap gap-2">
-        <button
-          disabled={pageInfo.page <= 1 || loading}
-          onClick={() => onPageChange(1)}
-          className="jt-btn-secondary px-3 text-sm"
-        >
-          首页
-        </button>
-        <button
-          disabled={pageInfo.page <= 1 || loading}
-          onClick={() => onPageChange(Math.max(1, pageInfo.page - 1))}
-          className="jt-btn-secondary px-3 text-sm"
-        >
-          上一页
-        </button>
-        <button
-          disabled={pageInfo.page >= pageInfo.totalPages || loading}
-          onClick={() => onPageChange(Math.min(pageInfo.totalPages, pageInfo.page + 1))}
-          className="jt-btn-secondary px-3 text-sm"
-        >
-          下一页
-        </button>
-        <button
-          disabled={pageInfo.page >= pageInfo.totalPages || loading}
-          onClick={() => onPageChange(pageInfo.totalPages)}
-          className="jt-btn-secondary px-3 text-sm"
-        >
-          末页
-        </button>
-      </div>
-    </div>
   )
 }
 
@@ -2557,154 +2613,11 @@ function messageToneClass(tone: MessageTone) {
   return 'border-gray-200 bg-gray-50 text-gray-600'
 }
 
-function integrationLogStatusText(status: IntegrationLog['status']) {
-  const labels: Record<IntegrationLog['status'], string> = {
-    success: '成功',
-    failed: '失败',
-    degraded: '降级',
-  }
-  return labels[status] || status
-}
-
-function batchStatusText(status: ScanRecord['batchStatus']) {
-  const labels: Record<ScanRecord['batchStatus'], string> = {
-    available: '可用',
-    qc_hold: '品控暂扣',
-    qc_released: '已放行',
-    returned_supplier: '退供应商',
-    repurchasing: '重采购',
-    downgraded: '降级处理',
-  }
-  return labels[status] || status
-}
-
-function traceTicketText(record: Record<string, unknown>) {
+function balanceLockText(record: Record<string, unknown>) {
   const nestedTicket = record.exception_tickets as Record<string, unknown> | undefined
-  const ticketNo = firstRecordValue(record, ['ticketNo', 'ticket_no'])
-    || firstRecordValue(nestedTicket || {}, ['ticket_no'])
-    || firstRecordValue(record, ['ticketId', 'ticket_id'])
-  const waybillNo = firstRecordValue(record, ['waybillNo', 'waybill_no'])
-    || firstRecordValue(nestedTicket || {}, ['waybill_no'])
-  return [ticketNo, waybillNo].filter(Boolean).join(' / ') || '-'
-}
-
-function compensationDirectionText(value: string) {
-  const labels: Record<string, string> = {
-    customer_compensation: '赔付客户',
-    supplier_recovery: '向供应商追偿',
-  }
-  return labels[value] || value || '-'
-}
-
-function compensationStatusText(value: string) {
-  const labels: Record<string, string> = {
-    pending_payment: '待支付',
-    pending_reconciliation: '待对账',
-    paid: '已支付',
-    reconciled: '已对账',
-  }
-  return labels[value] || value || '-'
-}
-
-function inventoryMovementText(value: string) {
-  const labels: Record<string, string> = {
-    stock_out: '库存出库',
-    stock_in: '退货入库',
-    status_change: '批次状态变更',
-    qc_release: '品控放行',
-    qc_close: '品控关闭',
-  }
-  return labels[value] || value || '-'
-}
-
-function approvalLevelText(value: string) {
-  const labels: Record<string, string> = {
-    level1: '一级审批',
-    level2: '二级审批',
-    qc_fast_release: '品控主管快速放行',
-  }
-  return labels[value] || value || '-'
-}
-
-function approvalResultText(value: string) {
-  const labels: Record<string, string> = {
-    approved: '通过',
-    rejected: '驳回',
-    fast_released: '快速放行',
-    auto_escalated: '超时自动升级',
-    auto_rejected: '超时自动驳回',
-  }
-  return labels[value] || value || '-'
-}
-
-function scanResultText(value: string) {
-  const labels: Record<string, string> = {
-    passed: '正常通过',
-    abnormal: '异常暂扣',
-  }
-  return labels[value] || value || '-'
-}
-
-function ticketEventText(value: string) {
-  const labels: Record<string, string> = {
-    ticket_created: '工单创建',
-    ticket_approved: '审批通过',
-    ticket_rejected: '审批驳回',
-    ticket_resubmitted: '工单重新提交',
-    ticket_completed: '工单完成',
-    ticket_closed: '工单关闭',
-    ticket_fast_released: '品控快速放行',
-    timeout_auto_escalated: '超时自动升级',
-    timeout_auto_rejected: '超时自动驳回',
-    execution_completed: '执行联动完成',
-  }
-  return labels[value] || value || '-'
-}
-
-function eventDetailText(value: string) {
-  if (!value || value === '-') return '-'
-  try {
-    const detail = JSON.parse(value) as Record<string, unknown>
-    const parts: string[] = []
-    if (detail.reason) parts.push(`原因：${String(detail.reason)}`)
-    if (detail.resubmitCount !== undefined) parts.push(`重提次数：${String(detail.resubmitCount)}`)
-    if (detail.action) parts.push(`动作：${executionActionText(String(detail.action))}`)
-    if (detail.batchStatus) parts.push(`批次状态：${batchStatusText(String(detail.batchStatus) as ScanRecord['batchStatus'])}`)
-    if (detail.processed !== undefined) parts.push(`处理数量：${String(detail.processed)}`)
-    if (detail.trigger) parts.push(`触发方式：${String(detail.trigger)}`)
-    return parts.length > 0 ? parts.join('；') : value
-  } catch {
-    return value
-  }
-}
-
-function executionActionText(value: string) {
-  const labels: Record<string, string> = {
-    customer_compensation: '赔付客户',
-    reship: '重新发货',
-    return_to_stock: '退货入库',
-    release: '放行货物',
-    return_supplier: '退回供应商',
-    repurchase: '重新采购',
-    downgrade: '降级处理',
-  }
-  return labels[value] || value || '-'
-}
-
-function formatMetricTime(value: string) {
-  if (!value || value === '-') return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleString('zh-CN', { hour12: false })
-}
-
-function firstRecordValue(row: Record<string, unknown>, keys: string[]) {
-  for (const key of keys) {
-    const value = row[key]
-    if (value === null || value === undefined || value === '') continue
-    return typeof value === 'object' ? JSON.stringify(value) : String(value)
-  }
-  return ''
+  return firstRecordValue(nestedTicket || {}, ['ticket_no'])
+    || firstRecordValue(record, ['lockedByTicketId', 'locked_by_ticket_id'])
+    || '-'
 }
 
 function TicketTable({
@@ -2957,15 +2870,6 @@ function auditRecordValue(row: Record<string, unknown>, field: AuditField) {
   return field.formatter ? field.formatter(value) : value
 }
 
-function recordValue(row: Record<string, unknown>, keys: string[]) {
-  for (const key of keys) {
-    const value = row[key]
-    if (value === null || value === undefined || value === '') continue
-    return typeof value === 'object' ? JSON.stringify(value) : String(value)
-  }
-  return '-'
-}
-
 function StatCard({ icon: Icon, label, value, hint }: { icon: typeof Gauge; label: string; value: number | string; hint: string }) {
   return (
     <div className="jt-card min-h-[156px] p-6">
@@ -2985,27 +2889,6 @@ function RequiredLabel({ children, className = '' }: { children: ReactNode; clas
       <span className="mr-1 text-red-500">*</span>
       {children}
     </label>
-  )
-}
-
-function MiniMetric({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="jt-muted-panel px-5 py-4">
-      <div className="text-2xl font-semibold text-gray-900">{value}</div>
-      <div className="mt-1 text-xs text-gray-500">{label}</div>
-    </div>
-  )
-}
-
-function SectionTitle({ icon: Icon, title, description, compact = false }: { icon: typeof Gauge; title: string; description: string; compact?: boolean }) {
-  return (
-    <div className={compact ? '' : 'p-6'}>
-      <div className="flex items-center gap-2">
-        <Icon className="h-5 w-5 text-[#0fc6c2]" />
-        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-      </div>
-      <p className="mt-2 text-sm leading-6 text-gray-500">{description}</p>
-    </div>
   )
 }
 
@@ -3031,15 +2914,4 @@ function PolicyCard({ title, text }: { title: string; text: string }) {
       <p className="mt-2 text-sm leading-6 text-gray-500">{text}</p>
     </div>
   )
-}
-
-function Badge({ children, tone }: { children: ReactNode; tone: 'green' | 'orange' | 'blue' | 'gray' }) {
-  const className = {
-    green: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-    orange: 'bg-orange-50 text-orange-700 ring-orange-200',
-    blue: 'bg-sky-50 text-sky-700 ring-sky-200',
-    gray: 'bg-gray-100 text-gray-600 ring-gray-200',
-  }[tone]
-
-  return <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ring-1 ${className}`}>{children}</span>
 }

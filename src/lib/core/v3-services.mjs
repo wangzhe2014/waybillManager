@@ -83,13 +83,20 @@ export async function processQualityScanWithV2({
     endpoint: `GET /api/v3/shipments/${input.waybillNo}/skus/${input.skuCode}/validate`,
   })
 
-  if (v2Result.status !== 'success' || !v2Result.data?.valid) {
+  const skuValidation = normalizeSkuValidation(v2Result.data)
+  if (v2Result.status !== 'success') {
     throw new Error(`V2 SKU 归属校验失败：${v2Result.error || `HTTP ${v2Result.statusCode}`}`)
+  }
+  if (!skuValidation) {
+    throw new Error('V2 SKU 归属校验失败：V2 返回格式不符合接口契约')
+  }
+  if (!skuValidation.valid) {
+    throw new Error(`V2 SKU 归属校验失败：SKU ${input.skuCode} 不属于运单 ${input.waybillNo}`)
   }
 
   await upsertScanWaybillSnapshot({
     input,
-    skuValidation: v2Result.data,
+    skuValidation,
     store,
     v2Client,
     now,
@@ -132,7 +139,7 @@ export async function processQualityScanWithV2({
   const batch = ticket && resolved.result === 'abnormal'
     ? {
       skuCode: input.skuCode,
-      skuName: input.skuName || v2Result.data.skuName || '',
+      skuName: input.skuName || skuValidation.skuName || '',
       batchNo: input.batchNo,
       status: 'qc_hold',
       ticketId: ticket.id,
@@ -144,7 +151,7 @@ export async function processQualityScanWithV2({
     id: idFactory('SCAN'),
     waybillNo: input.waybillNo,
     skuCode: input.skuCode,
-    skuName: input.skuName || v2Result.data.skuName || '',
+    skuName: input.skuName || skuValidation.skuName || '',
     batchNo: input.batchNo,
     operator: input.operator || input.operatorId || '扫描员',
     result: resolved.result,
@@ -185,6 +192,14 @@ export async function processQualityScanWithV2({
     scan,
     ticket,
   }
+}
+
+function normalizeSkuValidation(payload) {
+  const value = payload && typeof payload === 'object' && 'data' in payload
+    ? payload.data
+    : payload
+  if (!value || typeof value !== 'object' || typeof value.valid !== 'boolean') return null
+  return value
 }
 
 function toSnapshot(waybill, syncedAt) {

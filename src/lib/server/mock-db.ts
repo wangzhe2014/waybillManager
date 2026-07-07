@@ -436,20 +436,31 @@ export const mockStore = {
           : params.action === 'downgrade'
             ? 'downgraded'
             : 'qc_released'
+      const movementType = params.action === 'return_supplier' ? 'stock_out' : 'status_change'
+      const batch = findBatch(ticket.skuCode || '', ticket.batchNo || '')
+      const quantityDelta = resolveInventoryQuantityDelta({
+        movementType,
+        ticket: { ...ticket, inventoryQuantity: batch ? Number(batch.quantity || 0) : undefined },
+      })
       db.scans
         .filter((scan) => scan.ticketId === ticket.id)
         .forEach((scan) => {
           scan.batchStatus = batchStatus
         })
+      if (batch) {
+        applyBatchMovement(batch, {
+          quantityDelta,
+          status: batchStatus,
+          clearLock: true,
+        })
+      }
       db.inventoryMovements.unshift({
         id: createId('MOVE'),
+        batchId: batch?.id,
         ticketId: ticket.id,
         approvalRecordId: params.approvalRecordId,
-        movementType: params.action === 'return_supplier' ? 'stock_out' : 'status_change',
-        quantityDelta: resolveInventoryQuantityDelta({
-          movementType: params.action === 'return_supplier' ? 'stock_out' : 'status_change',
-          ticket,
-        }),
+        movementType,
+        quantityDelta,
         remark: `quality action: ${params.action}`,
         createdAt: new Date().toISOString(),
       })
@@ -471,12 +482,22 @@ export const mockStore = {
           ? 'stock_in'
           : ''
       if (movementType) {
+        const batch = findBatch(ticket.skuCode || '', ticket.batchNo || '')
+        const quantityDelta = resolveInventoryQuantityDelta({ movementType, ticket })
+        if (batch) {
+          applyBatchMovement(batch, {
+            quantityDelta,
+            status: String(batch.status || 'available'),
+            clearLock: false,
+          })
+        }
         db.inventoryMovements.unshift({
           id: createId('MOVE'),
+          batchId: batch?.id,
           ticketId: ticket.id,
           approvalRecordId: params.approvalRecordId,
           movementType,
-          quantityDelta: resolveInventoryQuantityDelta({ movementType, ticket }),
+          quantityDelta,
           remark: `logistics action: ${params.action}`,
           createdAt: new Date().toISOString(),
         })
@@ -510,6 +531,34 @@ export const mockStore = {
   async listInventoryMovements(limit = 100) {
     return db.inventoryMovements.slice(0, limit).map((record) => enrichTraceRecord(record))
   },
+
+  async listInventoryBatches(limit = 100) {
+    return [...db.batches]
+      .sort((left, right) => String(right.updatedAt || '').localeCompare(String(left.updatedAt || '')))
+      .slice(0, limit)
+  },
+}
+
+function findBatch(skuCode: string, batchNo: string) {
+  if (!skuCode || !batchNo) return null
+  return db.batches.find((item) =>
+    String(item.skuCode || '') === skuCode && String(item.batchNo || '') === batchNo
+  ) || null
+}
+
+function applyBatchMovement(batch: Record<string, unknown>, options: {
+  quantityDelta: number
+  status: string
+  clearLock: boolean
+}) {
+  batch.quantity = Math.max(0, Number(batch.quantity || 0) + options.quantityDelta)
+  batch.status = options.status
+  if (options.clearLock) {
+    delete batch.ticketId
+    delete batch.lockedByTicketId
+    delete batch.locked_by_ticket_id
+  }
+  batch.updatedAt = new Date().toISOString()
 }
 
 function enrichTraceRecord(record: Record<string, unknown>) {

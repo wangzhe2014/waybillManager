@@ -445,8 +445,18 @@ export function createSupabaseStore(client) {
     async listInventoryMovements(limit = 100) {
       const { data, error } = await client
         .from('inventory_movements')
-        .select('*, exception_tickets(ticket_no, waybill_no, exception_category, exception_type)')
+        .select('*, exception_tickets(ticket_no, waybill_no, exception_category, exception_type), inventory_batches(sku_code, sku_name, batch_no, quantity, status)')
         .order('created_at', { ascending: false })
+        .limit(limit)
+      if (error) throw error
+      return data || []
+    },
+
+    async listInventoryBatches(limit = 100) {
+      const { data, error } = await client
+        .from('inventory_batches')
+        .select('*, exception_tickets(ticket_no, waybill_no, exception_category, exception_type)')
+        .order('updated_at', { ascending: false })
         .limit(limit)
       if (error) throw error
       return data || []
