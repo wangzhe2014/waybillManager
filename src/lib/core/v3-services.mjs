@@ -94,13 +94,22 @@ export async function processQualityScanWithV2({
     throw new Error(`V2 SKU 归属校验失败：SKU ${input.skuCode} 不属于运单 ${input.waybillNo}`)
   }
 
-  await upsertScanWaybillSnapshot({
+  const scanContext = await upsertScanWaybillSnapshot({
     input,
     skuValidation,
     store,
     v2Client,
     now,
   })
+  const qualityFacts = deriveQualityScanFacts({
+    input,
+    skuValidation,
+    waybill: scanContext?.waybill || null,
+  })
+  const scanForRules = {
+    ...input,
+    ...qualityFacts.fields,
+  }
 
   const openTicket = typeof store.findOpenQualityTicketByBatch === 'function'
     ? await store.findOpenQualityTicketByBatch({
@@ -115,7 +124,7 @@ export async function processQualityScanWithV2({
       })
 
   const resolved = resolveQualityScan({
-    scan: input,
+    scan: scanForRules,
     qualityRules,
     openQualityTickets: openTicket ? [openTicket] : [],
   })
@@ -158,7 +167,7 @@ export async function processQualityScanWithV2({
     batchStatus: resolved.batchStatus,
     ticketId: ticket?.id,
     matchedRuleId: resolved.matchedRule?.id || ticket?.matchedRuleId,
-    abnormalDescription: input.abnormalDescription || '',
+    abnormalDescription: joinDescriptions(input.abnormalDescription, qualityFacts.description),
     scannedAt: formatDate(now()),
   }
 
@@ -226,15 +235,145 @@ async function upsertScanWaybillSnapshot({ input, skuValidation, store, v2Client
     })
 
     if (detailResult.status === 'success' && detailResult.data) {
-      return store.upsertWaybillSnapshot(toSnapshot(detailResult.data, now()))
+      return {
+        snapshot: await store.upsertWaybillSnapshot(toSnapshot(detailResult.data, now())),
+        waybill: detailResult.data,
+      }
     }
   }
 
-  return store.upsertWaybillSnapshot(toMinimalScanSnapshot({
+  return {
+    snapshot: await store.upsertWaybillSnapshot(toMinimalScanSnapshot({
     input,
     skuValidation,
     syncedAt: now(),
-  }))
+    })),
+    waybill: null,
+  }
+}
+
+function deriveQualityScanFacts({ input, skuValidation, waybill }) {
+  const skuDetail = findSkuDetail(waybill, skuValidation?.skuCode || input.skuCode)
+  const fields = {}
+  const descriptions = []
+
+  const expectedQuantity = numberOrNull(firstDefined(
+    skuDetail?.skuQuantity,
+    skuDetail?.quantity,
+    skuValidation?.skuQuantity
+  ))
+  const actualQuantity = numberOrNull(firstDefined(
+    input.actualQuantity,
+    input.scannedQuantity,
+    input.quantity
+  ))
+  if (expectedQuantity && expectedQuantity > 0 && actualQuantity !== null) {
+    fields.quantityDiffRate = Math.abs(actualQuantity - expectedQuantity) / expectedQuantity
+    if (fields.quantityDiffRate > 0) {
+      descriptions.push(`数量差异率：${formatPercent(fields.quantityDiffRate)}（期望 ${expectedQuantity}，实际 ${actualQuantity}）`)
+    }
+  } else if (input.quantityDiffRate !== undefined) {
+    fields.quantityDiffRate = Number(input.quantityDiffRate)
+  }
+
+  const expectedSpec = normalizeText(firstDefined(skuDetail?.skuSpec, skuDetail?.spec, skuValidation?.skuSpec))
+  const actualSpec = normalizeText(firstDefined(input.actualSpec, input.scannedSpec, input.skuSpec))
+  if (expectedSpec && actualSpec) {
+    fields.specMismatch = expectedSpec !== actualSpec
+    if (fields.specMismatch) descriptions.push(`规格不符：期望 ${expectedSpec}，实际 ${actualSpec}`)
+  } else if (input.specMismatch !== undefined) {
+    fields.specMismatch = toBoolean(input.specMismatch)
+  }
+
+  const expectedLabelSku = normalizeText(firstDefined(skuDetail?.skuCode, skuValidation?.skuCode, input.skuCode))
+  const actualLabelSku = normalizeText(firstDefined(input.labelSkuCode, input.scannedLabelSkuCode, input.labelCode))
+  if (expectedLabelSku && actualLabelSku) {
+    fields.labelError = expectedLabelSku !== actualLabelSku
+    if (fields.labelError) descriptions.push(`标签错误：期望 ${expectedLabelSku}，实际 ${actualLabelSku}`)
+  } else if (input.labelError !== undefined) {
+    fields.labelError = toBoolean(input.labelError)
+  }
+
+  fields.batchException = deriveBatchException({ input, skuValidation, skuDetail, waybill })
+  if (fields.batchException) descriptions.push('批次异常：是')
+
+  if (input.damageLevel !== undefined) fields.damageLevel = Number(input.damageLevel || 0)
+
+  return {
+    fields,
+    description: descriptions.join('；'),
+  }
+}
+
+function findSkuDetail(waybill, skuCode) {
+  const skus = Array.isArray(waybill?.skus) ? waybill.skus : []
+  return skus.find((sku) => normalizeText(sku?.skuCode) === normalizeText(skuCode)) || null
+}
+
+function deriveBatchException({ input, skuValidation, skuDetail, waybill }) {
+  if (input.batchException !== undefined) return toBoolean(input.batchException)
+
+  const batchNo = normalizeText(input.batchNo)
+  const exceptionBatchNos = [
+    ...arrayValue(skuValidation?.exceptionBatchNos),
+    ...arrayValue(skuValidation?.abnormalBatchNos),
+    ...arrayValue(skuValidation?.frozenBatchNos),
+    ...arrayValue(skuValidation?.blockedBatchNos),
+    ...arrayValue(skuValidation?.recalledBatchNos),
+    ...arrayValue(skuDetail?.exceptionBatchNos),
+    ...arrayValue(skuDetail?.abnormalBatchNos),
+    ...arrayValue(skuDetail?.frozenBatchNos),
+    ...arrayValue(skuDetail?.blockedBatchNos),
+    ...arrayValue(skuDetail?.recalledBatchNos),
+    ...arrayValue(waybill?.exceptionBatchNos),
+    ...arrayValue(waybill?.abnormalBatchNos),
+    ...arrayValue(waybill?.frozenBatchNos),
+    ...arrayValue(waybill?.blockedBatchNos),
+    ...arrayValue(waybill?.recalledBatchNos),
+  ].map(normalizeText)
+
+  if (batchNo && exceptionBatchNos.includes(batchNo)) return true
+
+  const batchStatus = normalizeText(firstDefined(
+    skuValidation?.batchStatus,
+    skuDetail?.batchStatus,
+    waybill?.batchStatus
+  )).toLowerCase()
+  return Boolean(batchStatus && !['available', 'normal', 'ok', 'pass', 'passed', 'qc_released'].includes(batchStatus))
+}
+
+function joinDescriptions(...parts) {
+  return parts.map((part) => String(part || '').trim()).filter(Boolean).join('；')
+}
+
+function firstDefined(...values) {
+  return values.find((value) => value !== undefined && value !== null && value !== '')
+}
+
+function normalizeText(value) {
+  return String(value || '').trim()
+}
+
+function numberOrNull(value) {
+  if (value === undefined || value === null || value === '') return null
+  const number = Number(value)
+  return Number.isFinite(number) ? number : null
+}
+
+function toBoolean(value) {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') return value !== 0
+  return ['true', '1', 'yes', '是'].includes(String(value || '').trim().toLowerCase())
+}
+
+function arrayValue(value) {
+  if (Array.isArray(value)) return value
+  if (typeof value === 'string' && value.trim()) return value.split(',').map((item) => item.trim())
+  return []
+}
+
+function formatPercent(value) {
+  return `${Math.round(Number(value || 0) * 10000) / 100}%`
 }
 
 function toMinimalScanSnapshot({ input, skuValidation, syncedAt }) {

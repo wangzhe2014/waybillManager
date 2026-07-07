@@ -39,6 +39,7 @@ import {
   compensationDirectionText,
   compensationStatusText,
   eventDetailText,
+  executionActionText,
   firstRecordValue,
   formatMetricTime,
   integrationLogStatusText,
@@ -57,6 +58,9 @@ type ScanFormState = {
   skuCode: string
   batchNo: string
   operator: string
+  actualQuantity: string
+  actualSpec: string
+  labelSkuCode: string
   abnormalDescription: string
   damageLevel: string
 }
@@ -71,6 +75,15 @@ type MessageTone = 'success' | 'error' | 'info'
 type InlineMessage = {
   message: string
   tone: MessageTone
+}
+type ConfirmTone = 'success' | 'warning' | 'info'
+type ConfirmDialogState = {
+  tone: ConfirmTone
+  title: string
+  description: string
+  confirmText: string
+  details?: Array<{ label: string; value: string }>
+  onConfirm: () => void | Promise<void>
 }
 type ScanRecordFilters = {
   waybillNo: string
@@ -251,12 +264,16 @@ export default function Home() {
   const [toast, setToast] = useState<InlineMessage | null>(null)
   const [scanAlert, setScanAlert] = useState<InlineMessage | null>(null)
   const [ticketAlert, setTicketAlert] = useState<InlineMessage | null>(null)
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null)
   const [reportModalOpen, setReportModalOpen] = useState(false)
   const [scanForm, setScanForm] = useState<ScanFormState>({
     waybillNo: '',
     skuCode: '',
     batchNo: '',
     operator: '',
+    actualQuantity: '',
+    actualSpec: '',
+    labelSkuCode: '',
     abnormalDescription: '',
     damageLevel: '',
   })
@@ -633,6 +650,9 @@ export default function Home() {
           skuCode: scanForm.skuCode,
           batchNo: scanForm.batchNo,
           operator: scanForm.operator || currentActor.label || currentActor.actorId,
+          actualQuantity: scanForm.actualQuantity,
+          actualSpec: scanForm.actualSpec,
+          labelSkuCode: scanForm.labelSkuCode,
           abnormalDescription: scanForm.abnormalDescription,
           damageLevel: Number(scanForm.damageLevel || 0),
         }),
@@ -693,136 +713,174 @@ export default function Home() {
     const ticket = ticketRows.find((item) => item.id === ticketId)
     if (!ticket) return
     const actionKey = `approve-${ticketId}-${decision}`
-    if (!window.confirm(decision === 'approved' ? '确认通过该工单？' : '确认拒绝并退回补充？')) return
+    setConfirmDialog({
+      tone: decision === 'approved' ? 'success' : 'warning',
+      title: decision === 'approved' ? '确认通过该工单' : '确认拒绝并退回补充',
+      description: decision === 'approved'
+        ? '通过后系统会自动执行库存、赔付和批次状态联动，并写入审计轨迹。'
+        : '拒绝后工单会进入待补充状态，提交人可补充资料后重新提交。',
+      confirmText: decision === 'approved' ? '确认通过' : '确认拒绝',
+      details: [
+        { label: '工单号', value: ticket.id },
+        { label: '异常类型', value: `${ticket.exceptionCategory === 'quality' ? '品控异常' : '物流异常'} · ${ticket.exceptionType}` },
+        { label: '当前版本', value: `v${ticket.version}` },
+      ],
+      onConfirm: async () => {
+        try {
+          setBusyAction(actionKey)
+          const response = await fetch(`/api/tickets/${encodeURIComponent(ticketId)}/approve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              decision,
+              opinion: decision === 'approved' ? '同意处理' : '资料不足，退回补充',
+              expectedVersion: ticket.version,
+              idempotencyKey: `ui-${ticketId}-${decision}-${ticket.version}`,
+              actorId: currentActor.actorId,
+              roles: currentActor.roles,
+            }),
+          })
+          const data = await response.json()
+          if (!response.ok || data.error) throw new Error(data.error || '审批提交失败')
 
-    try {
-      setBusyAction(actionKey)
-      const response = await fetch(`/api/tickets/${encodeURIComponent(ticketId)}/approve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          decision,
-          opinion: decision === 'approved' ? '同意处理' : '资料不足，退回补充',
-          expectedVersion: ticket.version,
-          idempotencyKey: `ui-${ticketId}-${decision}-${ticket.version}`,
-          actorId: currentActor.actorId,
-          roles: currentActor.roles,
-        }),
-      })
-      const data = await response.json()
-      if (!response.ok || data.error) throw new Error(data.error || '审批提交失败')
-
-      const approvalId = String(data.approvalRecord?.id || data.approvalRecord?.approval_record_id || '')
-      if (approvalId) {
-        setApprovalRecordByTicket((current) => ({ ...current, [ticketId]: approvalId }))
-      }
-      await refreshTickets()
-      await refreshTicketList()
-      await refreshScanRecords(scanPage)
-      await refreshCompensations()
-      await refreshInventoryMovements()
-      await refreshInventoryBalances()
-      notifySuccess(decision === 'approved' ? '审批已通过，库存/赔付已自动联动完成。' : '审批已拒绝，工单等待重新提交。')
-    } catch (error) {
-      notifyError(error instanceof Error ? error.message : '审批提交失败')
-    } finally {
-      setBusyAction('')
-    }
+          const approvalId = String(data.approvalRecord?.id || data.approvalRecord?.approval_record_id || '')
+          if (approvalId) {
+            setApprovalRecordByTicket((current) => ({ ...current, [ticketId]: approvalId }))
+          }
+          await refreshTickets()
+          await refreshTicketList()
+          await refreshScanRecords(scanPage)
+          await refreshCompensations()
+          await refreshInventoryMovements()
+          await refreshInventoryBalances()
+          notifySuccess(decision === 'approved' ? '审批已通过，库存/赔付已自动联动完成。' : '审批已拒绝，工单等待重新提交。')
+        } catch (error) {
+          notifyError(error instanceof Error ? error.message : '审批提交失败')
+        } finally {
+          setBusyAction('')
+        }
+      },
+    })
   }
 
   const handleResubmit = async (ticketId: string) => {
     const actionKey = `resubmit-${ticketId}`
-    if (!window.confirm('确认重新提交该工单？')) return
+    setConfirmDialog({
+      tone: 'info',
+      title: '确认重新提交工单',
+      description: '系统会将该工单重新送回审批流程，并记录本次重新提交事件。',
+      confirmText: '重新提交',
+      details: [{ label: '工单号', value: ticketId }],
+      onConfirm: async () => {
+        try {
+          setBusyAction(actionKey)
+          const response = await fetch(`/api/tickets/${encodeURIComponent(ticketId)}/resubmit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              reason: '已补充异常凭证，重新提交审批',
+              actorId: currentActor.actorId,
+              roles: currentActor.roles,
+            }),
+          })
+          const data = await response.json()
+          if (!response.ok || data.error) throw new Error(data.error || '重新提交失败')
 
-    try {
-      setBusyAction(actionKey)
-      const response = await fetch(`/api/tickets/${encodeURIComponent(ticketId)}/resubmit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reason: '已补充异常凭证，重新提交审批',
-          actorId: currentActor.actorId,
-          roles: currentActor.roles,
-        }),
-      })
-      const data = await response.json()
-      if (!response.ok || data.error) throw new Error(data.error || '重新提交失败')
-
-      await refreshTickets()
-      await refreshTicketList()
-      notifySuccess('工单已重新提交，重新进入审批流程。')
-    } catch (error) {
-      notifyError(error instanceof Error ? error.message : '重新提交失败')
-    } finally {
-      setBusyAction('')
-    }
+          await refreshTickets()
+          await refreshTicketList()
+          notifySuccess('工单已重新提交，重新进入审批流程。')
+        } catch (error) {
+          notifyError(error instanceof Error ? error.message : '重新提交失败')
+        } finally {
+          setBusyAction('')
+        }
+      },
+    })
   }
 
   const handleExecute = async (ticketId: string, action: string) => {
     const approvalRecordId = approvalRecordByTicket[ticketId]
     const actionKey = `execute-${ticketId}-${action}`
-    if (!window.confirm('确认执行该联动动作？')) return
+    setConfirmDialog({
+      tone: 'info',
+      title: '确认执行联动动作',
+      description: '该动作会写入库存流水、赔付记录或批次状态变更，建议仅用于补偿或重试场景。',
+      confirmText: '执行联动',
+      details: [
+        { label: '工单号', value: ticketId },
+        { label: '执行动作', value: executionActionText(action) },
+        { label: '审批记录', value: approvalRecordId || '-' },
+      ],
+      onConfirm: async () => {
+        try {
+          setBusyAction(actionKey)
+          const response = await fetch(`/api/tickets/${encodeURIComponent(ticketId)}/execute`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action,
+              approvalRecordId: approvalRecordId || undefined,
+              actorId: currentActor.actorId,
+            }),
+          })
+          const data = await response.json()
+          if (!response.ok || data.error) throw new Error(data.error || '执行联动失败')
 
-    try {
-      setBusyAction(actionKey)
-      const response = await fetch(`/api/tickets/${encodeURIComponent(ticketId)}/execute`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action,
-          approvalRecordId: approvalRecordId || undefined,
-          actorId: currentActor.actorId,
-        }),
-      })
-      const data = await response.json()
-      if (!response.ok || data.error) throw new Error(data.error || '执行联动失败')
-
-      await refreshTickets()
-      await refreshTicketList()
-      await refreshScanRecords(scanPage)
-      await refreshCompensations()
-      await refreshInventoryMovements()
-      await refreshInventoryBalances()
-      notifySuccess('执行联动已完成，库存/赔付/批次状态已由后端事务处理。')
-    } catch (error) {
-      notifyError(error instanceof Error ? error.message : '执行联动失败')
-    } finally {
-      setBusyAction('')
-    }
+          await refreshTickets()
+          await refreshTicketList()
+          await refreshScanRecords(scanPage)
+          await refreshCompensations()
+          await refreshInventoryMovements()
+          await refreshInventoryBalances()
+          notifySuccess('执行联动已完成，库存/赔付/批次状态已由后端事务处理。')
+        } catch (error) {
+          notifyError(error instanceof Error ? error.message : '执行联动失败')
+        } finally {
+          setBusyAction('')
+        }
+      },
+    })
   }
 
   const handleFastRelease = async (ticketId: string) => {
     const actionKey = `fast-release-${ticketId}`
-    if (!window.confirm('确认按误判快速放行该品控工单？')) return
+    setConfirmDialog({
+      tone: 'success',
+      title: '确认快速放行品控工单',
+      description: '快速放行会解除批次暂扣，并记录品控主管复核意见；请确认该异常为误判或不影响出库。',
+      confirmText: '快速放行',
+      details: [{ label: '工单号', value: ticketId }],
+      onConfirm: async () => {
+        try {
+          setBusyAction(actionKey)
+          const response = await fetch(`/api/tickets/${encodeURIComponent(ticketId)}/fast-release`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              reason: '外包装轻微压痕，复核后确认不影响商品出库。',
+              actorId: currentActor.actorId,
+              roles: currentActor.roles,
+            }),
+          })
+          const data = await response.json()
+          if (!response.ok || data.error) throw new Error(data.error || '快速放行失败')
 
-    try {
-      setBusyAction(actionKey)
-      const response = await fetch(`/api/tickets/${encodeURIComponent(ticketId)}/fast-release`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reason: '外包装轻微压痕，复核后确认不影响商品出库。',
-          actorId: currentActor.actorId,
-          roles: currentActor.roles,
-        }),
-      })
-      const data = await response.json()
-      if (!response.ok || data.error) throw new Error(data.error || '快速放行失败')
-
-      setScanRows((current) => current.map((scan) =>
-        scan.ticketId === ticketId ? { ...scan, batchStatus: 'qc_released' } : scan
-      ))
-      await refreshTickets()
-      await refreshTicketList()
-      await refreshScanRecords(scanPage)
-      await refreshInventoryMovements()
-      await refreshInventoryBalances()
-      notifySuccess('品控主管已快速放行，批次状态已解锁。')
-    } catch (error) {
-      notifyError(error instanceof Error ? error.message : '快速放行失败')
-    } finally {
-      setBusyAction('')
-    }
+          setScanRows((current) => current.map((scan) =>
+            scan.ticketId === ticketId ? { ...scan, batchStatus: 'qc_released' } : scan
+          ))
+          await refreshTickets()
+          await refreshTicketList()
+          await refreshScanRecords(scanPage)
+          await refreshInventoryMovements()
+          await refreshInventoryBalances()
+          notifySuccess('品控主管已快速放行，批次状态已解锁。')
+        } catch (error) {
+          notifyError(error instanceof Error ? error.message : '快速放行失败')
+        } finally {
+          setBusyAction('')
+        }
+      },
+    })
   }
 
   return (
@@ -1013,6 +1071,17 @@ export default function Home() {
           )}
         </section>
       </div>
+      {confirmDialog && (
+        <ActionConfirmDialog
+          dialog={confirmDialog}
+          onCancel={() => setConfirmDialog(null)}
+          onConfirm={() => {
+            const action = confirmDialog.onConfirm
+            setConfirmDialog(null)
+            void action()
+          }}
+        />
+      )}
     </main>
   )
 }
@@ -1134,6 +1203,20 @@ function ScanPanel({
           <input className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" value={scanForm.skuCode} onChange={(event) => updateField('skuCode', event.target.value)} />
           <RequiredLabel className="mt-4">批次号</RequiredLabel>
           <input className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" value={scanForm.batchNo} onChange={(event) => updateField('batchNo', event.target.value)} />
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <label>
+              <span className="text-sm font-medium text-gray-700">实际数量</span>
+              <input type="number" min="0" className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" value={scanForm.actualQuantity} onChange={(event) => updateField('actualQuantity', event.target.value)} />
+            </label>
+            <label>
+              <span className="text-sm font-medium text-gray-700">实际规格</span>
+              <input className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" placeholder="例如：500g" value={scanForm.actualSpec} onChange={(event) => updateField('actualSpec', event.target.value)} />
+            </label>
+            <label>
+              <span className="text-sm font-medium text-gray-700">标签 SKU</span>
+              <input className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" placeholder="扫描标签 SKU" value={scanForm.labelSkuCode} onChange={(event) => updateField('labelSkuCode', event.target.value)} />
+            </label>
+          </div>
           <div className="mt-4 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700">
             <span className="text-gray-500">操作人</span>
             <span className="ml-3 font-semibold text-gray-900">{currentActorName || '当前用户'}</span>
@@ -1533,6 +1616,84 @@ function TicketPanel({
   )
 }
 
+function ActionConfirmDialog({
+  dialog,
+  onConfirm,
+  onCancel,
+}: {
+  dialog: ConfirmDialogState
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  const toneConfig = {
+    success: {
+      icon: CheckCircle2,
+      iconClass: 'bg-emerald-50 text-emerald-600 ring-emerald-100',
+      confirmClass: 'jt-btn-success',
+      noteClass: 'border-emerald-100 bg-emerald-50 text-emerald-700',
+      note: '确认后将立即提交，并写入操作审计记录。',
+    },
+    warning: {
+      icon: AlertTriangle,
+      iconClass: 'bg-orange-50 text-orange-600 ring-orange-100',
+      confirmClass: 'jt-btn-warning',
+      noteClass: 'border-orange-100 bg-orange-50 text-orange-700',
+      note: '该操作会改变工单状态，请确认业务资料已经核对。',
+    },
+    info: {
+      icon: ShieldCheck,
+      iconClass: 'bg-sky-50 text-sky-600 ring-sky-100',
+      confirmClass: 'jt-btn-primary',
+      noteClass: 'border-sky-100 bg-sky-50 text-sky-700',
+      note: '系统会保留本次操作轨迹，便于后续审计追踪。',
+    },
+  }[dialog.tone]
+  const Icon = toneConfig.icon
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-gray-950/45 p-4">
+      <section className="jt-modal max-h-[calc(100vh-2rem)] w-full max-w-xl overflow-hidden">
+        <div className="flex items-start gap-4 border-b border-gray-100 px-6 py-5">
+          <div className={`rounded-xl p-3 ring-1 ${toneConfig.iconClass}`}>
+            <Icon className="h-6 w-6" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-lg font-semibold text-gray-950">{dialog.title}</h3>
+            <p className="mt-2 text-sm leading-6 text-gray-500">{dialog.description}</p>
+          </div>
+          <button onClick={onCancel} className="jt-icon-btn" aria-label="关闭确认弹框">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {dialog.details && dialog.details.length > 0 && (
+          <div className="grid gap-3 px-6 py-5 sm:grid-cols-3">
+            {dialog.details.map((item) => (
+              <div key={item.label} className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
+                <div className="text-xs text-gray-500">{item.label}</div>
+                <div className="mt-1 break-words text-sm font-semibold text-gray-900">{item.value}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="px-6 pb-5">
+          <div className={`rounded-lg border px-4 py-3 text-sm leading-6 ${toneConfig.noteClass}`}>
+            {toneConfig.note}
+          </div>
+        </div>
+
+        <div className="flex flex-col-reverse gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4 sm:flex-row sm:justify-end">
+          <button onClick={onCancel} className="jt-btn-secondary px-5 text-sm">取消</button>
+          <button onClick={onConfirm} className={`${toneConfig.confirmClass} px-5 text-sm`}>
+            {dialog.confirmText}
+          </button>
+        </div>
+      </section>
+    </div>
+  )
+}
+
 function ReportExceptionModal({
   alert,
   reportForm,
@@ -1549,8 +1710,8 @@ function ReportExceptionModal({
   onUpdateField: (field: keyof ReportFormState, value: string) => void
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/45 p-4">
-      <div className="jt-modal max-h-[90vh] w-full max-w-3xl overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/45 p-4">
+      <div className="jt-modal max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-y-auto">
         <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-5">
           <SectionTitle icon={AlertTriangle} title="上报物流异常" description="提交前会通过接口校验运单真实性，提交后生成审批工单。" compact />
           <button onClick={onClose} className="jt-icon-btn" aria-label="关闭上报异常弹框">
@@ -1590,7 +1751,7 @@ function ReportExceptionModal({
             <textarea className="mt-2 h-28 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" value={reportForm.description} onChange={(event) => onUpdateField('description', event.target.value)} />
           </RequiredLabel>
         </div>
-        <div className="flex justify-end gap-3 border-t border-gray-100 px-6 py-4">
+        <div className="flex flex-col-reverse gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4 sm:flex-row sm:justify-end">
           <button onClick={onClose} className="jt-btn-secondary px-4 text-sm">
             取消
           </button>

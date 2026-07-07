@@ -311,6 +311,150 @@ test('quality scan accepts V2 SKU validation payload wrapped by data', async () 
   assert.equal(store.state.scans[0].skuName, '冷链牛肉卷')
 })
 
+test('quality scan derives quantity difference from V2 SKU detail before matching rules', async () => {
+  const store = createMemoryStore()
+  const v2Client = {
+    async validateWaybillSku(waybillNo, skuCode) {
+      return {
+        data: {
+          valid: true,
+          waybillNo,
+          skuCode,
+          skuName: '冷链牛肉卷',
+        },
+        requestId: 'req-sku-qty',
+        status: 'success',
+        statusCode: 200,
+        durationMs: 30,
+      }
+    },
+    async getWaybillDetail(waybillNo) {
+      return {
+        data: {
+          waybillNo,
+          storeName: '海口龙湖天街店',
+          receiverName: '林晓',
+          amount: 4,
+          skus: [{ skuCode: 'ZBWP10086', skuName: '冷链牛肉卷', skuQuantity: 4 }],
+        },
+        requestId: 'req-detail-qty',
+        status: 'success',
+        statusCode: 200,
+        durationMs: 41,
+      }
+    },
+  }
+
+  const result = await processQualityScanWithV2({
+    input: {
+      waybillNo: 'PS2512220005001',
+      skuCode: 'ZBWP10086',
+      batchNo: 'BATCH-HK-0703-QTY',
+      operator: '扫描员-王磊',
+      actualQuantity: 3,
+      damageLevel: 0,
+    },
+    qualityRules: [{
+      id: 'QR-QTY-DIFF-02',
+      subtype: '数量不符',
+      severity: 'medium',
+      condition: { field: 'quantityDiffRate', operator: 'gte', value: 0.02 },
+      entryLevel: 'level1_reviewing',
+    }],
+    store,
+    v2Client,
+    idFactory: (prefix) => `${prefix}-qty`,
+  })
+
+  assert.equal(result.result, 'abnormal')
+  assert.equal(result.ticket.exceptionType, '数量不符')
+  assert.equal(result.scan.matchedRuleId, 'QR-QTY-DIFF-02')
+  assert.match(result.scan.abnormalDescription, /数量差异率：25%/)
+})
+
+test('quality scan derives spec, label and batch exceptions from V2 data before matching rules', async () => {
+  const store = createMemoryStore()
+  const v2Client = {
+    async validateWaybillSku(waybillNo, skuCode) {
+      return {
+        data: {
+          valid: true,
+          waybillNo,
+          skuCode,
+          skuName: '冷链牛肉卷',
+          exceptionBatchNos: ['BATCH-FROZEN-01'],
+        },
+        requestId: 'req-sku-derived',
+        status: 'success',
+        statusCode: 200,
+        durationMs: 30,
+      }
+    },
+    async getWaybillDetail(waybillNo) {
+      return {
+        data: {
+          waybillNo,
+          storeName: '海口龙湖天街店',
+          receiverName: '林晓',
+          amount: 1,
+          skus: [{
+            skuCode: 'ZBWP10086',
+            skuName: '冷链牛肉卷',
+            skuQuantity: 1,
+            skuSpec: '500g',
+            exceptionBatchNos: ['BATCH-FROZEN-01'],
+          }],
+        },
+        requestId: 'req-detail-derived',
+        status: 'success',
+        statusCode: 200,
+        durationMs: 41,
+      }
+    },
+  }
+
+  const result = await processQualityScanWithV2({
+    input: {
+      waybillNo: 'PS2512220005001',
+      skuCode: 'ZBWP10086',
+      batchNo: 'BATCH-FROZEN-01',
+      operator: '扫描员-王磊',
+      actualSpec: '250g',
+      labelSkuCode: 'ZBWP-WRONG',
+      damageLevel: 0,
+    },
+    qualityRules: [{
+      id: 'QR-BATCH-01',
+      subtype: '批次异常',
+      severity: 'high',
+      condition: { field: 'batchException', operator: 'eq', value: true },
+      entryLevel: 'level2_reviewing',
+    }, {
+      id: 'QR-SPEC-01',
+      subtype: '规格不符',
+      severity: 'medium',
+      condition: { field: 'specMismatch', operator: 'eq', value: true },
+      entryLevel: 'level1_reviewing',
+    }, {
+      id: 'QR-LABEL-01',
+      subtype: '标签错误',
+      severity: 'medium',
+      condition: { field: 'labelError', operator: 'eq', value: true },
+      entryLevel: 'level1_reviewing',
+    }],
+    store,
+    v2Client,
+    idFactory: (prefix) => `${prefix}-derived`,
+  })
+
+  assert.equal(result.result, 'abnormal')
+  assert.equal(result.ticket.exceptionType, '批次异常')
+  assert.equal(result.scan.matchedRuleId, 'QR-BATCH-01')
+  assert.match(result.scan.abnormalDescription, /批次异常：是/)
+  assert.match(result.scan.abnormalDescription, /规格不符：期望 500g，实际 250g/)
+  assert.match(result.scan.abnormalDescription, /标签错误：期望 ZBWP10086，实际 ZBWP-WRONG/)
+})
+
 test('quality scan writes a full waybill snapshot after V2 SKU validation succeeds', async () => {
   const store = createMemoryStore()
   const v2Client = {
