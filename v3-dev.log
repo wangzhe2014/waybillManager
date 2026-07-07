@@ -236,3 +236,200 @@
  GET /api/scan-records?page=1&pageSize=10 200 in 1933ms
  GET /api/rules 200 in 673ms
  GET /api/rules 200 in 298ms
+ ✓ Compiled in 1776ms (519 modules)
+ ✓ Compiled in 2.6s (519 modules)
+ ✓ Compiled in 2.9s (519 modules)
+ ✓ Compiled in 2.7s (519 modules)
+ ✓ Compiled in 2.8s (519 modules)
+ ✓ Compiled in 2.8s (519 modules)
+ ⨯ ./src/app/page.tsx
+Error: 
+  [31mx[0m Expected ',', got 'className'
+      ,-[[36;1;4mD:\trae\waybillManager\src\app\page.tsx[0m:2235:1]
+ [2m2235[0m |         </div>
+ [2m2236[0m |       </div>
+ [2m2237[0m | 
+ [2m2238[0m |       <div className="mt-6 overflow-hidden rounded-lg border border-gray-200">
+      : [31;1m           ^^^^^^^^^[0m
+ [2m2239[0m |         <div className="overflow-x-auto scrollbar-thin">
+ [2m2240[0m |           <table className="w-full min-w-[1120px] text-sm">
+ [2m2241[0m |             <colgroup>
+      `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/app/page.tsx
+ ○ Compiling /_error ...
+ ⨯ ./src/app/page.tsx
+Error: 
+  [31mx[0m Expected ',', got 'className'
+      ,-[[36;1;4mD:\trae\waybillManager\src\app\page.tsx[0m:2235:1]
+ [2m2235[0m |         </div>
+ [2m2236[0m |       </div>
+ [2m2237[0m | 
+ [2m2238[0m |       <div className="mt-6 overflow-hidden rounded-lg border border-gray-200">
+      : [31;1m           ^^^^^^^^^[0m
+ [2m2239[0m |         <div className="overflow-x-auto scrollbar-thin">
+ [2m2240[0m |           <table className="w-full min-w-[1120px] text-sm">
+ [2m2241[0m |             <colgroup>
+      `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/app/page.tsx
+ GET / 500 in 30ms
+ ⨯ ./src/app/page.tsx
+Error: 
+  [31mx[0m Expected ',', got 'className'
+      ,-[[36;1;4mD:\trae\waybillManager\src\app\page.tsx[0m:2235:1]
+ [2m2235[0m |         </div>
+ [2m2236[0m |       </div>
+ [2m2237[0m | 
+ [2m2238[0m |       <div className="mt-6 overflow-hidden rounded-lg border border-gray-200">
+      : [31;1m           ^^^^^^^^^[0m
+ [2m2239[0m |         <div className="overflow-x-auto scrollbar-thin">
+ [2m2240[0m |           <table className="w-full min-w-[1120px] text-sm">
+ [2m2241[0m |             <colgroup>
+      `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/app/page.tsx
+ GET /_next/static/webpack/b8934f092e560006.webpack.hot-update.json 500 in 625ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET / 200 in 8ms
+ GET / 500 in 13ms
+ ⨯ ./src/app/page.tsx
+Error: 
+  [31mx[0m Expected ',', got 'className'
+      ,-[[36;1;4mD:\trae\waybillManager\src\app\page.tsx[0m:2235:1]
+ [2m2235[0m |         </div>
+ [2m2236[0m |       </div>
+ [2m2237[0m | 
+ [2m2238[0m |       <div className="mt-6 overflow-hidden rounded-lg border border-gray-200">
+      : [31;1m           ^^^^^^^^^[0m
+ [2m2239[0m |         <div className="overflow-x-auto scrollbar-thin">
+ [2m2240[0m |           <table className="w-full min-w-[1120px] text-sm">
+ [2m2241[0m |             <colgroup>
+      `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/app/page.tsx
+ GET /_next/static/webpack/b8934f092e560006.webpack.hot-update.json 500 in 410ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET / 500 in 18ms
+ ⨯ ./src/app/page.tsx
+Error: 
+  [31mx[0m Expected ',', got 'className'
+      ,-[[36;1;4mD:\trae\waybillManager\src\app\page.tsx[0m:2236:1]
+ [2m2236[0m |         </div>
+ [2m2237[0m |       </div>
+ [2m2238[0m | 
+ [2m2239[0m |       <div className="mt-6 overflow-hidden rounded-lg border border-gray-200">
+      : [31;1m           ^^^^^^^^^[0m
+ [2m2240[0m |         <div className="overflow-x-auto scrollbar-thin">
+ [2m2241[0m |           <table className="w-full min-w-[1120px] text-sm">
+ [2m2242[0m |             <colgroup>
+      `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/app/page.tsx
+ GET /_next/static/webpack/b8934f092e560006.webpack.hot-update.json 500 in 429ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET / 500 in 15ms
+ ⨯ ./src/app/page.tsx
+Error: 
+  [31mx[0m Expected ',', got 'className'
+      ,-[[36;1;4mD:\trae\waybillManager\src\app\page.tsx[0m:2236:1]
+ [2m2236[0m |         </div>
+ [2m2237[0m |       </div>
+ [2m2238[0m | 
+ [2m2239[0m |       <div className="mt-6 overflow-hidden rounded-lg border border-gray-200">
+      : [31;1m           ^^^^^^^^^[0m
+ [2m2240[0m |         <div className="overflow-x-auto scrollbar-thin">
+ [2m2241[0m |           <table className="w-full min-w-[1120px] text-sm">
+ [2m2242[0m |             <colgroup>
+      `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/app/page.tsx
+ GET /_next/static/webpack/b8934f092e560006.webpack.hot-update.json 500 in 503ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET / 500 in 13ms
+ ⨯ ./src/app/page.tsx
+Error: 
+  [31mx[0m Expected ',', got 'className'
+      ,-[[36;1;4mD:\trae\waybillManager\src\app\page.tsx[0m:2236:1]
+ [2m2236[0m |         </div>
+ [2m2237[0m |       </div>
+ [2m2238[0m | 
+ [2m2239[0m |       <div className="mt-6 overflow-hidden rounded-lg border border-gray-200">
+      : [31;1m           ^^^^^^^^^[0m
+ [2m2240[0m |         <div className="overflow-x-auto scrollbar-thin">
+ [2m2241[0m |           <table className="w-full min-w-[1120px] text-sm">
+ [2m2242[0m |             <colgroup>
+      `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/app/page.tsx
+ GET /_next/static/webpack/b8934f092e560006.webpack.hot-update.json 500 in 526ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET / 500 in 12ms
+ ✓ Compiled /_not-found in 2.1s (735 modules)
+ GET /_next/static/webpack/b8934f092e560006.webpack.hot-update.json 500 in 2156ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET / 200 in 136ms
+ GET / 200 in 80ms
+ ○ Compiling /api/inventory-movements ...
+ ✓ Compiled /api/inventory-movements in 1271ms (378 modules)
+ ✓ Compiled (387 modules)
+ GET /api/integration-logs?page=1&pageSize=10 200 in 2907ms
+ GET /api/tickets 200 in 2913ms
+ GET /api/inventory-movements?page=1&pageSize=10 200 in 2903ms
+ GET /api/compensations?page=1&pageSize=10 200 in 2942ms
+ GET /api/scan-records?page=1&pageSize=5 200 in 3189ms
+ GET /api/tickets 200 in 299ms
+ GET /api/inventory-movements?page=1&pageSize=10 200 in 300ms
+ GET /api/integration-logs?page=1&pageSize=10 200 in 437ms
+ GET /api/tickets?page=1&pageSize=10 200 in 439ms
+ GET /api/scan-records?page=1&pageSize=10 200 in 3477ms
+ GET /api/compensations?page=1&pageSize=10 200 in 293ms
+ GET /api/scan-records?page=1&pageSize=5 200 in 584ms
+ GET /api/scan-records?page=1&pageSize=10 200 in 556ms
+ ✓ Compiled in 2.9s (837 modules)
+ GET / 200 in 1048ms
+ GET /api/integration-logs?page=1&pageSize=10 200 in 2049ms
+ GET /api/compensations?page=1&pageSize=10 200 in 2049ms
+ GET /api/inventory-movements?page=1&pageSize=10 200 in 2052ms
+ GET /api/tickets 200 in 2072ms
+ GET /api/scan-records?page=1&pageSize=5 200 in 2482ms
+ GET /api/scan-records?page=1&pageSize=10 200 in 2484ms
+ GET /api/tickets?page=1&pageSize=10 200 in 461ms
+ GET /api/inventory-movements?page=1&pageSize=10 200 in 459ms
+ GET /api/integration-logs?page=1&pageSize=10 200 in 466ms
+ GET /api/compensations?page=1&pageSize=10 200 in 491ms
+ GET /api/tickets 200 in 303ms
+ GET /api/scan-records?page=1&pageSize=10 200 in 560ms
+ GET /api/scan-records?page=1&pageSize=5 200 in 711ms
+ ○ Compiling /api/tickets/[ticketId] ...
+ ✓ Compiled /api/tickets/[ticketId] in 894ms (388 modules)
+ GET /api/tickets/TQ-1783347817365-ad3386 200 in 2598ms
+ GET /api/tickets/TQ-1783346801353-cc7113 200 in 1954ms

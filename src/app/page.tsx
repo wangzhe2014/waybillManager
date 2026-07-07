@@ -785,14 +785,14 @@ export default function Home() {
   return (
     <main className="min-h-screen">
       <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto max-w-[1720px] px-6 py-8 xl:px-10 2xl:px-12">
+        <div className="mx-auto max-w-[1720px] px-6 py-6 xl:px-10 2xl:px-12">
           <div>
             <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-[#0bada9]">
               <PackageCheck className="h-4 w-4" />
               运单全生命周期管理平台 V3
             </div>
-            <h1 className="text-3xl font-semibold text-[#1d2129] xl:text-4xl">扫描品控、异常上报、分级审批与执行联动</h1>
-            <p className="mt-3 max-w-5xl text-base leading-7 text-gray-500">
+            <h1 className="text-2xl font-semibold text-[#1d2129] xl:text-3xl">扫描品控、异常上报、分级审批与执行联动</h1>
+            <p className="mt-3 max-w-5xl text-sm leading-6 text-gray-500">
               独立部署、独立数据库，通过 HTTP API 对接 V2 运单数据；本地仅保存快照、工单、审批、库存和赔付记录。
             </p>
           </div>
@@ -824,7 +824,7 @@ export default function Home() {
 
         <section className="space-y-7">
           {toast && activeTab !== 'tickets' && (
-            <div className={`rounded-xl border px-5 py-3 text-sm font-medium ${messageToneClass(toast.tone)}`}>
+            <div className={`rounded-lg border px-5 py-3 text-sm font-medium ${messageToneClass(toast.tone)}`}>
               {toast.message}
             </div>
           )}
@@ -1014,8 +1014,9 @@ function Dashboard({
             <SectionTitle icon={FileSearch} title="关键工单" description="按超时、状态和品控风险选取前 5 条，完整列表在工单追踪中处理。" compact />
             <button
               onClick={onViewAllTickets}
-              className="w-fit rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              className="jt-btn-secondary w-fit px-4 text-sm"
             >
+              <FileSearch className="h-4 w-4" />
               查看全部
             </button>
           </div>
@@ -1081,7 +1082,7 @@ function ScanPanel({
         </div>
       )}
       <div className="mt-6 grid gap-6 xl:grid-cols-[420px_1fr]">
-        <div className="rounded-xl border border-gray-200 bg-gray-50 p-5">
+        <div className="jt-muted-panel p-5">
           <RequiredLabel>运单号</RequiredLabel>
           <input className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" value={scanForm.waybillNo} onChange={(event) => updateField('waybillNo', event.target.value)} />
           <RequiredLabel className="mt-4">SKU 编码</RequiredLabel>
@@ -1131,18 +1132,26 @@ function ScanPanel({
             命中规则后复扫同批次只追加扫描记录，不重复创建工单。
           </p>
         </div>
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
           <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
             <div>
               <h3 className="text-sm font-semibold text-gray-900">最近扫描结果</h3>
               <p className="mt-1 text-xs text-gray-500">只展示最近记录，用于确认本次扫描反馈。</p>
             </div>
-            <button onClick={onViewAllScanRecords} className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50">
+            <button onClick={onViewAllScanRecords} className="jt-btn-secondary px-3 text-xs">
+              <FileSearch className="h-4 w-4" />
               查看全部
             </button>
           </div>
           <div className="overflow-x-auto scrollbar-thin">
             <table className="w-full min-w-[760px] text-sm">
+              <colgroup>
+                <col className="w-[220px]" />
+                <col className="w-[210px]" />
+                <col className="w-[120px]" />
+                <col className="w-[150px]" />
+                <col />
+              </colgroup>
               <thead className="bg-gray-50 text-left text-gray-500">
                 <tr>
                   <th className="px-5 py-4">扫描 ID</th>
@@ -1181,28 +1190,28 @@ function ScanPanel({
               <button
                 disabled={pageInfo.page <= 1 || loading}
                 onClick={() => onPageChange(1)}
-                className="rounded-lg border border-gray-200 px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+                className="jt-btn-secondary px-3 text-sm"
               >
                 首页
               </button>
               <button
                 disabled={pageInfo.page <= 1 || loading}
                 onClick={() => onPageChange(Math.max(1, pageInfo.page - 1))}
-                className="rounded-lg border border-gray-200 px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+                className="jt-btn-secondary px-3 text-sm"
               >
                 上一页
               </button>
               <button
                 disabled={pageInfo.page >= pageInfo.totalPages || loading}
                 onClick={() => onPageChange(Math.min(pageInfo.totalPages, pageInfo.page + 1))}
-                className="rounded-lg border border-gray-200 px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+                className="jt-btn-secondary px-3 text-sm"
               >
                 下一页
               </button>
               <button
                 disabled={pageInfo.page >= pageInfo.totalPages || loading}
                 onClick={() => onPageChange(pageInfo.totalPages)}
-                className="rounded-lg border border-gray-200 px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+                className="jt-btn-secondary px-3 text-sm"
               >
                 末页
               </button>
@@ -1245,7 +1254,7 @@ function ScanRecordsPanel({
   return (
     <section className="jt-card overflow-hidden">
       <SectionTitle icon={ListFilter} title="扫描记录" description="查询全部历史扫描，按运单、SKU、批次、结果、批次状态和关联工单筛选。" />
-      <div className="grid gap-3 border-y border-gray-100 px-6 py-4 xl:grid-cols-[1fr_1fr_1fr_150px_170px_1fr_auto_auto]">
+      <div className="jt-toolbar px-6 py-4 xl:grid-cols-[1fr_1fr_1fr_150px_170px_1fr_auto_auto]">
         <input className="rounded-lg border border-gray-200 px-3 py-2 text-sm" placeholder="运单号" value={filters.waybillNo} onChange={(event) => onFilterChange('waybillNo', event.target.value)} onKeyDown={submitFiltersOnEnter} />
         <input className="rounded-lg border border-gray-200 px-3 py-2 text-sm" placeholder="SKU 编码" value={filters.skuCode} onChange={(event) => onFilterChange('skuCode', event.target.value)} onKeyDown={submitFiltersOnEnter} />
         <input className="rounded-lg border border-gray-200 px-3 py-2 text-sm" placeholder="批次号" value={filters.batchNo} onChange={(event) => onFilterChange('batchNo', event.target.value)} onKeyDown={submitFiltersOnEnter} />
@@ -1264,11 +1273,24 @@ function ScanRecordsPanel({
           <option value="downgraded">降级处理</option>
         </select>
         <input className="rounded-lg border border-gray-200 px-3 py-2 text-sm" placeholder="关联工单" value={filters.ticketNo} onChange={(event) => onFilterChange('ticketNo', event.target.value)} onKeyDown={submitFiltersOnEnter} />
-        <button onClick={onSearch} className="jt-btn-primary h-10 px-4 text-sm">查询</button>
-        <button onClick={onResetFilters} className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">重置</button>
+        <button onClick={onSearch} className="jt-btn-primary h-10 px-4 text-sm">
+          <Search className="h-4 w-4" />
+          查询
+        </button>
+        <button onClick={onResetFilters} className="jt-btn-secondary px-3 text-sm">重置</button>
       </div>
       <div className="overflow-x-auto scrollbar-thin">
-        <table className="w-full min-w-[1080px] text-sm">
+        <table className="w-full min-w-[1120px] text-sm">
+          <colgroup>
+            <col className="w-[230px]" />
+            <col className="w-[180px]" />
+            <col className="w-[120px]" />
+            <col className="w-[115px]" />
+            <col className="w-[130px]" />
+            <col className="w-[160px]" />
+            <col className="w-[180px]" />
+            <col />
+          </colgroup>
           <thead className="bg-gray-50 text-left text-gray-500">
             <tr>
               <th className="px-5 py-4">扫描 ID</th>
@@ -1390,16 +1412,17 @@ function TicketPanel({
               ))}
             </select>
             <button onClick={onOpenReportModal} className="jt-btn-primary h-10 px-4 text-sm">
+              <Plus className="h-4 w-4" />
               上报异常
             </button>
           </div>
         </div>
         {alert && (
-          <div className={`mx-6 mt-5 rounded-xl border px-5 py-4 text-sm font-semibold shadow-sm ${messageToneClass(alert.tone)}`}>
+          <div className={`mx-6 mt-5 rounded-lg border px-5 py-4 text-sm font-semibold shadow-sm ${messageToneClass(alert.tone)}`}>
             {alert.message}
           </div>
         )}
-        <div className="grid gap-3 border-b border-gray-100 px-6 py-4 md:grid-cols-[1fr_1fr_1fr_auto_auto]">
+        <div className="jt-toolbar border-t-0 px-6 py-4 md:grid-cols-[1fr_1fr_1fr_auto_auto]">
           <input
             className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
             placeholder="运单号"
@@ -1428,51 +1451,18 @@ function TicketPanel({
             onClick={onSearch}
             className="jt-btn-primary h-10 px-4 text-sm"
           >
+            <Search className="h-4 w-4" />
             查询
           </button>
           <button
             onClick={onResetFilters}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            className="jt-btn-secondary px-3 text-sm"
           >
             重置
           </button>
         </div>
         <TicketTable rows={filteredTickets} onSelectTicket={onSelectTicket} emptyText={loading ? '正在加载工单...' : '暂无匹配工单'} />
-        <div className="flex flex-col gap-3 border-t border-gray-100 px-6 py-4 text-sm text-gray-600 md:flex-row md:items-center md:justify-between">
-          <span>
-            共 {ticketPageInfo.total} 条，第 {ticketPageInfo.page} / {ticketPageInfo.totalPages} 页
-          </span>
-          <div className="flex gap-2">
-            <button
-              disabled={ticketPageInfo.page <= 1}
-              onClick={() => onTicketPageChange(1)}
-              className="rounded-lg border border-gray-200 px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              首页
-            </button>
-            <button
-              disabled={ticketPageInfo.page <= 1}
-              onClick={() => onTicketPageChange(Math.max(1, ticketPageInfo.page - 1))}
-              className="rounded-lg border border-gray-200 px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              上一页
-            </button>
-            <button
-              disabled={ticketPageInfo.page >= ticketPageInfo.totalPages}
-              onClick={() => onTicketPageChange(Math.min(ticketPageInfo.totalPages, ticketPageInfo.page + 1))}
-              className="rounded-lg border border-gray-200 px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              下一页
-            </button>
-            <button
-              disabled={ticketPageInfo.page >= ticketPageInfo.totalPages}
-              onClick={() => onTicketPageChange(ticketPageInfo.totalPages)}
-              className="rounded-lg border border-gray-200 px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              末页
-            </button>
-          </div>
-        </div>
+        <TracePagination pageInfo={ticketPageInfo} loading={loading} onPageChange={onTicketPageChange} />
       </section>
 
       {reportModalOpen && (
@@ -1515,16 +1505,16 @@ function ReportExceptionModal({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/45 p-4">
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+      <div className="jt-modal max-h-[90vh] w-full max-w-3xl overflow-y-auto">
         <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-5">
           <SectionTitle icon={AlertTriangle} title="上报物流异常" description="提交前会通过接口校验运单真实性，提交后生成审批工单。" compact />
-          <button onClick={onClose} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700" aria-label="关闭上报异常弹框">
+          <button onClick={onClose} className="jt-icon-btn" aria-label="关闭上报异常弹框">
             <X className="h-5 w-5" />
           </button>
         </div>
         <div className="space-y-5 px-6 py-5">
           {alert && (
-            <div className={`rounded-xl border px-5 py-4 text-sm font-semibold ${messageToneClass(alert.tone)}`}>
+            <div className={`rounded-lg border px-5 py-4 text-sm font-semibold ${messageToneClass(alert.tone)}`}>
               {alert.message}
             </div>
           )}
@@ -1556,7 +1546,7 @@ function ReportExceptionModal({
           </RequiredLabel>
         </div>
         <div className="flex justify-end gap-3 border-t border-gray-100 px-6 py-4">
-          <button onClick={onClose} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+          <button onClick={onClose} className="jt-btn-secondary px-4 text-sm">
             取消
           </button>
           <button onClick={onSubmit} className="jt-btn-primary h-10 px-5">
@@ -1650,6 +1640,13 @@ function ApprovalPanel({
         </div>
         <div className="overflow-x-auto scrollbar-thin">
           <table className="w-full min-w-[980px] text-sm">
+            <colgroup>
+              <col className="w-[260px]" />
+              <col />
+              <col className="w-[130px]" />
+              <col className="w-[90px]" />
+              <col className="w-[320px]" />
+            </colgroup>
             <thead className="bg-gray-50 text-left text-gray-500">
               <tr>
                 <th className="px-5 py-4">工单</th>
@@ -1692,7 +1689,7 @@ function ApprovalPanel({
                             onClick={() => onResubmit(ticket.id)}
                             title={resubmitReason || undefined}
                             disabled={Boolean(resubmitReason) || busyAction === `resubmit-${ticket.id}`}
-                            className="rounded-lg bg-[#0fc6c2] px-3 py-2 text-xs font-semibold text-white hover:bg-[#0bada9] disabled:cursor-not-allowed disabled:opacity-60"
+                            className="jt-btn-primary min-h-8 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             {busyAction === `resubmit-${ticket.id}` ? '提交中' : '重新提交'}
                           </button>
@@ -1702,7 +1699,7 @@ function ApprovalPanel({
                               onClick={() => onApprove(ticket.id, 'approved')}
                               title={approveReason || undefined}
                               disabled={Boolean(approveReason) || busyAction === `approve-${ticket.id}-approved`}
-                              className="rounded-lg bg-[#0fc6c2] px-3 py-2 text-xs font-semibold text-white hover:bg-[#0bada9] disabled:cursor-not-allowed disabled:opacity-60"
+                              className="jt-btn-primary min-h-8 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               {busyAction === `approve-${ticket.id}-approved` ? '处理中' : '通过'}
                             </button>
@@ -1710,7 +1707,7 @@ function ApprovalPanel({
                               onClick={() => onApprove(ticket.id, 'rejected')}
                               title={rejectReason || undefined}
                               disabled={Boolean(rejectReason) || busyAction === `approve-${ticket.id}-rejected`}
-                              className="rounded-lg border border-orange-200 px-3 py-2 text-xs font-semibold text-orange-700 hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60"
+                              className="jt-btn-warning min-h-8 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               {busyAction === `approve-${ticket.id}-rejected` ? '处理中' : '拒绝'}
                             </button>
@@ -1719,7 +1716,7 @@ function ApprovalPanel({
                                 onClick={() => onFastRelease(ticket.id)}
                                 title={fastReleaseReason || undefined}
                                 disabled={Boolean(fastReleaseReason) || busyAction === `fast-release-${ticket.id}`}
-                                className="rounded-lg border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="jt-btn-success min-h-8 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-60"
                               >
                                 {busyAction === `fast-release-${ticket.id}` ? '处理中' : '快速放行'}
                               </button>
@@ -1782,7 +1779,7 @@ function CompensationPanel({
   return (
     <section className="jt-card overflow-hidden">
       <SectionTitle icon={CheckCircle2} title="赔付记录" description="集中查看审批通过后自动生成的客户赔付和供应商追偿记录。" />
-      <div className="grid gap-3 border-y border-gray-100 px-6 py-4 md:grid-cols-[1fr_1fr_1fr_auto_auto]">
+      <div className="jt-toolbar px-6 py-4 md:grid-cols-[1fr_1fr_1fr_auto_auto]">
         <input
           className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
           placeholder="工单号 / 运单号"
@@ -1806,17 +1803,27 @@ function CompensationPanel({
           onClick={onSearch}
           className="jt-btn-primary h-10 px-4 text-sm"
         >
+          <Search className="h-4 w-4" />
           查询
         </button>
         <button
           onClick={onResetFilters}
-          className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          className="jt-btn-secondary px-3 text-sm"
         >
           重置
         </button>
       </div>
       <div className="overflow-x-auto scrollbar-thin">
-        <table className="w-full min-w-[980px] text-sm">
+        <table className="w-full min-w-[1040px] text-sm">
+          <colgroup>
+            <col className="w-[210px]" />
+            <col className="w-[240px]" />
+            <col className="w-[150px]" />
+            <col className="w-[120px]" />
+            <col className="w-[120px]" />
+            <col className="w-[180px]" />
+            <col />
+          </colgroup>
           <thead className="bg-gray-50 text-left text-gray-500">
             <tr>
               <th className="px-5 py-4">记录</th>
@@ -1890,7 +1897,7 @@ function InventoryPanel({
   return (
     <section className="jt-card overflow-hidden">
       <SectionTitle icon={Boxes} title="库存流水" description="集中查看审批执行或品控处理产生的库存联动记录。" />
-      <div className="grid gap-3 border-y border-gray-100 px-6 py-4 md:grid-cols-[1fr_1fr_auto_auto]">
+      <div className="jt-toolbar px-6 py-4 md:grid-cols-[1fr_1fr_auto_auto]">
         <input
           className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
           placeholder="工单号 / 运单号"
@@ -1910,17 +1917,27 @@ function InventoryPanel({
           onClick={onSearch}
           className="jt-btn-primary h-10 px-4 text-sm"
         >
+          <Search className="h-4 w-4" />
           查询
         </button>
         <button
           onClick={onResetFilters}
-          className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          className="jt-btn-secondary px-3 text-sm"
         >
           重置
         </button>
       </div>
       <div className="overflow-x-auto scrollbar-thin">
-        <table className="w-full min-w-[980px] text-sm">
+        <table className="w-full min-w-[1040px] text-sm">
+          <colgroup>
+            <col className="w-[210px]" />
+            <col className="w-[240px]" />
+            <col className="w-[150px]" />
+            <col className="w-[110px]" />
+            <col className="w-[180px]" />
+            <col />
+            <col className="w-[170px]" />
+          </colgroup>
           <thead className="bg-gray-50 text-left text-gray-500">
             <tr>
               <th className="px-5 py-4">流水</th>
@@ -1982,28 +1999,28 @@ function TracePagination({
         <button
           disabled={pageInfo.page <= 1 || loading}
           onClick={() => onPageChange(1)}
-          className="rounded-lg border border-gray-200 px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+          className="jt-btn-secondary px-3 text-sm"
         >
           首页
         </button>
         <button
           disabled={pageInfo.page <= 1 || loading}
           onClick={() => onPageChange(Math.max(1, pageInfo.page - 1))}
-          className="rounded-lg border border-gray-200 px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+          className="jt-btn-secondary px-3 text-sm"
         >
           上一页
         </button>
         <button
           disabled={pageInfo.page >= pageInfo.totalPages || loading}
           onClick={() => onPageChange(Math.min(pageInfo.totalPages, pageInfo.page + 1))}
-          className="rounded-lg border border-gray-200 px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+          className="jt-btn-secondary px-3 text-sm"
         >
           下一页
         </button>
         <button
           disabled={pageInfo.page >= pageInfo.totalPages || loading}
           onClick={() => onPageChange(pageInfo.totalPages)}
-          className="rounded-lg border border-gray-200 px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+          className="jt-btn-secondary px-3 text-sm"
         >
           末页
         </button>
@@ -2164,13 +2181,12 @@ function RulesPanel() {
     <section className="jt-card p-6">
       <SectionTitle icon={Settings2} title="规则配置中心" description="审批阈值和品控触发条件必须落库配置，延续 V2 规则引擎理念。" />
       {loadError && (
-        <div className="mt-5 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-700">
+        <div className="mt-5 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-700">
           {loadError}
         </div>
       )}
 
-      <div className="mt-6 border-b border-gray-100 pb-5">
-        <div className="grid gap-3 lg:grid-cols-[150px_1fr_1fr_150px_auto_auto_auto]">
+      <div className="jt-toolbar mt-6 rounded-lg border border-gray-100 px-4 py-4 lg:grid-cols-[150px_1fr_1fr_150px_auto_auto_auto]">
           <select
             className="h-10 rounded-lg border border-gray-200 px-3 text-sm"
             value={ruleTypeFilter}
@@ -2207,9 +2223,10 @@ function RulesPanel() {
             <option value="disabled">停用</option>
           </select>
           <button onClick={handleRuleSearch} className="jt-btn-primary h-10 px-5">
+            <Search className="h-4 w-4" />
             查询
           </button>
-          <button onClick={handleRuleReset} className="h-10 rounded-lg border border-gray-200 px-5 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+          <button onClick={handleRuleReset} className="jt-btn-secondary px-5 text-sm">
             重置
           </button>
           <button onClick={handleCreateRule} className="jt-btn-primary h-10 w-fit px-5">
@@ -2217,11 +2234,19 @@ function RulesPanel() {
             新建规则
           </button>
         </div>
-      </div>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-gray-200">
+      <div className="mt-6 overflow-hidden rounded-lg border border-gray-200">
         <div className="overflow-x-auto scrollbar-thin">
-          <table className="w-full min-w-[1080px] text-sm">
+          <table className="w-full min-w-[1120px] text-sm">
+            <colgroup>
+              <col className="w-[190px]" />
+              <col className="w-[180px]" />
+              <col className="w-[110px]" />
+              <col />
+              <col className="w-[170px]" />
+              <col className="w-[100px]" />
+              <col className="w-[150px]" />
+            </colgroup>
             <thead className="bg-gray-50 text-left text-gray-500">
               <tr>
                 <th className="px-5 py-4">规则名称</th>
@@ -2251,11 +2276,11 @@ function RulesPanel() {
                   <td className="px-5 py-4"><Badge tone={row.enabled ? 'green' : 'gray'}>{row.enabled ? '启用' : '停用'}</Badge></td>
                   <td className="px-5 py-4">
                     <div className="flex gap-2">
-                      <button onClick={() => handleEditRule(row)} className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50">
+                      <button onClick={() => handleEditRule(row)} className="jt-btn-secondary min-h-8 px-3 text-xs">
                         编辑
                       </button>
                       {row.enabled && (
-                        <button onClick={() => handleDisableRule(row)} className="rounded-lg border border-orange-200 px-3 py-2 text-xs font-semibold text-orange-700 hover:bg-orange-50">
+                        <button onClick={() => handleDisableRule(row)} className="jt-btn-warning min-h-8 px-3 text-xs">
                           停用
                         </button>
                       )}
@@ -2271,22 +2296,22 @@ function RulesPanel() {
       <div className="mt-5 flex flex-col gap-3 border-t border-gray-100 pt-5 text-sm text-gray-600 md:flex-row md:items-center md:justify-between">
         <span>共 {pagedRules.total} 条，第 {pagedRules.page} / {pagedRules.totalPages} 页</span>
         <div className="flex flex-wrap gap-2">
-          <button disabled={pagedRules.page <= 1} onClick={() => setRulePage(1)} className="rounded-lg border border-gray-200 px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40">首页</button>
-          <button disabled={pagedRules.page <= 1} onClick={() => setRulePage(Math.max(1, pagedRules.page - 1))} className="rounded-lg border border-gray-200 px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40">上一页</button>
-          <button disabled={pagedRules.page >= pagedRules.totalPages} onClick={() => setRulePage(Math.min(pagedRules.totalPages, pagedRules.page + 1))} className="rounded-lg border border-gray-200 px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40">下一页</button>
-          <button disabled={pagedRules.page >= pagedRules.totalPages} onClick={() => setRulePage(pagedRules.totalPages)} className="rounded-lg border border-gray-200 px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40">末页</button>
+          <button disabled={pagedRules.page <= 1} onClick={() => setRulePage(1)} className="jt-btn-secondary px-3 text-sm">首页</button>
+          <button disabled={pagedRules.page <= 1} onClick={() => setRulePage(Math.max(1, pagedRules.page - 1))} className="jt-btn-secondary px-3 text-sm">上一页</button>
+          <button disabled={pagedRules.page >= pagedRules.totalPages} onClick={() => setRulePage(Math.min(pagedRules.totalPages, pagedRules.page + 1))} className="jt-btn-secondary px-3 text-sm">下一页</button>
+          <button disabled={pagedRules.page >= pagedRules.totalPages} onClick={() => setRulePage(pagedRules.totalPages)} className="jt-btn-secondary px-3 text-sm">末页</button>
         </div>
       </div>
 
       {ruleModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-5 py-8">
-          <div className="max-h-[92vh] w-full max-w-6xl overflow-y-auto rounded-xl bg-white shadow-xl">
+          <div className="jt-modal max-h-[92vh] w-full max-w-6xl overflow-y-auto">
             <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50 px-7 py-5">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">{ruleModalMode === 'create' ? '新建规则' : '规则编辑'}</h3>
                 <p className="mt-1 text-sm text-gray-500">{ruleForm.mode === 'quality' ? '品控规则会影响扫描暂扣与审批入口。' : '审批规则会影响工单进入一级或二级审批。'}</p>
               </div>
-              <button onClick={() => setRuleModalOpen(false)} className="rounded-lg border border-gray-200 p-2 text-gray-500 hover:bg-gray-50" aria-label="关闭弹框">
+              <button onClick={() => setRuleModalOpen(false)} className="jt-icon-btn" aria-label="关闭弹框">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -2396,7 +2421,7 @@ function RulesPanel() {
                   启用
                 </label>
                 <div className="flex gap-2">
-                  <button onClick={() => setRuleModalOpen(false)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">取消</button>
+                  <button onClick={() => setRuleModalOpen(false)} className="jt-btn-secondary px-4 text-sm">取消</button>
                   <button onClick={handleSaveRule} className="jt-btn-primary h-10 px-5">保存规则</button>
                 </div>
               </div>
@@ -2451,7 +2476,7 @@ function MonitoringPanel({
         <MiniMetric label="成功率" value={loading || !hasLogs ? '-' : `${summary.successRate}%`} />
         <MiniMetric label="降级次数" value={loading || !hasLogs ? '-' : summary.degradedCount} />
       </div>
-      <div className="grid gap-3 border-b border-gray-100 px-6 py-4 md:grid-cols-[1fr_1fr_auto_auto]">
+      <div className="jt-toolbar border-t-0 px-6 py-4 md:grid-cols-[1fr_1fr_auto_auto]">
         <input
           className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
           placeholder="Request ID"
@@ -2470,17 +2495,26 @@ function MonitoringPanel({
           onClick={onSearch}
           className="jt-btn-primary h-10 px-4 text-sm"
         >
+          <Search className="h-4 w-4" />
           查询
         </button>
         <button
           onClick={onResetFilters}
-          className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          className="jt-btn-secondary px-3 text-sm"
         >
           重置
         </button>
       </div>
       <div className="overflow-x-auto scrollbar-thin">
-        <table className="w-full min-w-[980px] text-sm">
+        <table className="w-full min-w-[1060px] text-sm">
+          <colgroup>
+            <col className="w-[190px]" />
+            <col className="w-[220px]" />
+            <col />
+            <col className="w-[100px]" />
+            <col className="w-[100px]" />
+            <col className="w-[260px]" />
+          </colgroup>
           <thead className="bg-gray-50 text-left text-gray-500">
             <tr>
               <th className="px-5 py-4">Request ID</th>
@@ -2689,6 +2723,17 @@ function TicketTable({
   return (
     <div className="overflow-x-auto scrollbar-thin">
       <table className="w-full min-w-[1180px] text-sm">
+        <colgroup>
+          <col className="w-[260px]" />
+          <col className="w-[150px]" />
+          <col />
+          <col className="w-[110px]" />
+          <col className="w-[130px]" />
+          <col className="w-[150px]" />
+          <col className="w-[100px]" />
+          {reasonForTicket && <col className="w-[130px]" />}
+          {hasActions && <col className="w-[110px]" />}
+        </colgroup>
         <thead className="bg-gray-50 text-left text-gray-500">
           <tr>
             <th className="px-5 py-4">工单</th>
@@ -2735,8 +2780,9 @@ function TicketTable({
                 <td className="px-5 py-4 text-right">
                   <button
                     onClick={() => onSelectTicket?.(ticket.id)}
-                    className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                    className="jt-btn-secondary min-h-8 px-3 text-xs"
                   >
+                    <FileSearch className="h-4 w-4" />
                     查看
                   </button>
                 </td>
@@ -2762,7 +2808,7 @@ function TicketDetailPanel({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/45 p-4">
-      <section className="max-h-[90vh] w-full max-w-6xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+      <section className="jt-modal max-h-[90vh] w-full max-w-6xl overflow-y-auto">
         <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-5">
           <SectionTitle
             icon={FileSearch}
@@ -2770,20 +2816,20 @@ function TicketDetailPanel({
             description="展示审批、品控扫描、库存联动、赔付记录和执行事件，便于核对闭环证据。"
             compact
           />
-          <button onClick={onClose} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700" aria-label="关闭工单详情">
+          <button onClick={onClose} className="jt-icon-btn" aria-label="关闭工单详情">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="px-6 py-5">
           {loading && (
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-6 text-sm text-gray-500">
+            <div className="jt-muted-panel p-6 text-sm text-gray-500">
               正在加载 {selectedTicketId} 的审计轨迹...
             </div>
           )}
 
           {!loading && !detail && (
-            <div className="rounded-xl border border-orange-200 bg-orange-50 p-6 text-sm text-orange-700">
+            <div className="rounded-lg border border-orange-200 bg-orange-50 p-6 text-sm text-orange-700">
               未读取到 {selectedTicketId} 的详情。
             </div>
           )}
@@ -2860,7 +2906,7 @@ function TicketDetailPanel({
 
 function DetailMetric({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+    <div className="jt-muted-panel p-4">
       <div className="text-xs text-gray-500">{label}</div>
       <div className="mt-2 break-words text-sm font-semibold text-gray-900">{value}</div>
     </div>
@@ -2883,7 +2929,7 @@ function AuditList({
   fields: AuditField[]
 }) {
   return (
-    <div className="rounded-xl border border-gray-200">
+    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
       <div className="border-b border-gray-200 px-4 py-3 text-sm font-semibold text-gray-800">{title}</div>
       <div className="divide-y divide-gray-100">
         {rows.length === 0 && (
@@ -2943,7 +2989,7 @@ function RequiredLabel({ children, className = '' }: { children: ReactNode; clas
 
 function MiniMetric({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50 px-5 py-4">
+    <div className="jt-muted-panel px-5 py-4">
       <div className="text-2xl font-semibold text-gray-900">{value}</div>
       <div className="mt-1 text-xs text-gray-500">{label}</div>
     </div>
@@ -2964,7 +3010,7 @@ function SectionTitle({ icon: Icon, title, description, compact = false }: { ico
 
 function FlowStep({ title, text }: { title: string; text: string }) {
   return (
-    <div className="rounded-xl border border-gray-200 p-5">
+    <div className="rounded-lg border border-gray-200 p-5">
       <div className="flex items-center gap-2 font-semibold text-gray-800">
         <CheckCircle2 className="h-4 w-4 text-[#0fc6c2]" />
         {title}
@@ -2976,7 +3022,7 @@ function FlowStep({ title, text }: { title: string; text: string }) {
 
 function PolicyCard({ title, text }: { title: string; text: string }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50 p-5">
+    <div className="jt-muted-panel p-5">
       <div className="flex items-center gap-2 font-semibold text-gray-800">
         <Boxes className="h-4 w-4 text-[#0fc6c2]" />
         {title}
